@@ -1,0 +1,18 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Registro | Mundial 2026{% endblock %}
+
+{% block content %}
+<section class="panel">
+    <div class="panel-logo logo-large">
+        {% include 'core/partials/logo_mundial.html' %}
+    </div>
+    <h1><span class="label-with-icon"><span class="icon" aria-hidden="true">＋</span>Crear cuenta</span></h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_div }}
+        <button class="with-icon" type="submit"><span class="icon light" aria-hidden="true">＋</span>Registrarme</button>
+    </form>
+    <p>Ya tenes cuenta? <a href="{% url 'core:login' %}">Ingresa</a>.</p>
+</section>
+{% endblock %}

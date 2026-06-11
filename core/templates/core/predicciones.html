@@ -1,0 +1,910 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Predicciones | Mundial 2026{% endblock %}
+
+{% block extra_head %}
+<style>
+    .predictions-hero {
+        display: grid;
+        gap: 0.45rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        color: #fff;
+        background: linear-gradient(135deg, var(--blue), var(--brand));
+        border-bottom: 5px solid var(--gold);
+    }
+
+    .predictions-hero h1 {
+        margin: 0;
+        font-size: clamp(1.65rem, 7vw, 2.5rem);
+        line-height: 1.05;
+    }
+
+    .predictions-hero p {
+        margin: 0;
+        color: #e7f0fb;
+    }
+
+    .phase-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.55rem;
+        margin-bottom: 1rem;
+    }
+
+    .phase-tab {
+        min-height: 2.8rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        padding: 0.75rem;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        text-align: center;
+        text-decoration: none;
+        font-weight: 900;
+    }
+
+    .phase-tab.active {
+        background: var(--blue);
+        border-color: var(--blue);
+        color: #fff;
+    }
+
+    .group-prediction {
+        margin-top: 0.85rem;
+        border-radius: 8px;
+        background: #fff;
+        border: 1px solid var(--line);
+        overflow: hidden;
+    }
+
+    .prediction-summary {
+        list-style: none;
+        min-height: 3rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.8rem 0.9rem;
+        cursor: pointer;
+        color: #fff;
+        background: #172033;
+        border-left: 6px solid var(--gold);
+        font-weight: 900;
+    }
+
+    .prediction-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .prediction-summary::after {
+        content: "+";
+        width: 1.7rem;
+        height: 1.7rem;
+        display: inline-grid;
+        place-items: center;
+        margin-left: auto;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+    .group-prediction[open] .prediction-summary::after {
+        content: "-";
+    }
+
+    .group-flags {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+        margin-left: 0.35rem;
+    }
+
+    .group-flag,
+    .mini-flag {
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        overflow: hidden;
+    }
+
+    .group-flag {
+        width: 1.6rem;
+        height: 1.6rem;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .mini-flag {
+        width: 1.8rem;
+        height: 1.8rem;
+        background: #f5f7fb;
+        border: 1px solid #d9e1ec;
+    }
+
+    .group-flag-img,
+    .mini-flag-img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+    }
+
+    .group-content {
+        display: grid;
+        gap: 1rem;
+        padding: 0.85rem;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+    }
+
+    .standings {
+        width: 100%;
+        min-width: 560px;
+        border-collapse: collapse;
+        background: #fff;
+    }
+
+    .standings th,
+    .standings td {
+        padding: 0.62rem 0.55rem;
+        border-bottom: 1px solid var(--line);
+        text-align: center;
+        font-size: 0.9rem;
+    }
+
+    .standings th {
+        background: #f1f6fb;
+        color: var(--muted);
+        font-size: 0.76rem;
+        text-transform: uppercase;
+    }
+
+    .standings td:first-child,
+    .standings th:first-child {
+        text-align: left;
+    }
+
+    .team-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+        font-weight: 800;
+    }
+
+    .group-matches {
+        display: grid;
+        gap: 0.65rem;
+    }
+
+    .prediction-match {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem);
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.75rem;
+        border: 1px solid var(--line);
+        border-left: 5px solid var(--brand);
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .match-info {
+        min-width: 0;
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .match-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .match-teams {
+        display: grid;
+        gap: 0.35rem;
+        font-weight: 900;
+    }
+
+    .match-team {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+    }
+
+    .match-team span:last-child {
+        overflow-wrap: anywhere;
+    }
+
+    .match-place {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: var(--muted);
+        font-size: 0.84rem;
+    }
+
+    .compact-prediction {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.45rem;
+        padding: 0.6rem;
+        border-radius: 8px;
+        background: #f5f8fc;
+        border: 1px solid #dbe3ee;
+    }
+
+    .reset-prediction-form {
+        display: none;
+    }
+
+.reset-prediction-button {
+            width: 1.45rem;
+            height: 1.45rem;
+            display: grid;
+            place-items: center;
+            padding: 0;
+            border-radius: 50%;
+            border: 1px solid #d9e1ec;
+            background: #fff;
+            color: #9f1239;
+            line-height: 1;
+        }
+
+        .reset-prediction-button i {
+            font-size: 0.9em;
+        }
+
+    .prediction-footer {
+        grid-column: 1 / -1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        min-height: 1.45rem;
+    }
+
+    .reset-all-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        padding: 0.55rem 0.65rem;
+        border-radius: 8px;
+        border: 1px solid #f0b7bd;
+        background: #fff1f2;
+        color: #9f1239;
+        font-weight: 900;
+    }
+
+    .reset-all-wrap {
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .reset-all-wrap form {
+        margin: 0;
+    }
+
+    .reset-all-button {
+        width: auto;
+    }
+
+    .compact-prediction label {
+        margin: 0;
+        display: grid;
+        gap: 0.25rem;
+        min-width: 0;
+    }
+
+    .compact-prediction span {
+        color: var(--muted);
+        font-size: 0.74rem;
+        font-weight: 800;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .compact-prediction input {
+        padding: 0.5rem;
+        text-align: center;
+        font-weight: 900;
+    }
+
+    .autosave-status {
+        min-height: 1.1rem;
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .locked-prediction {
+        padding: 0.8rem;
+        border-radius: 8px;
+        background: #f5f8fc;
+        color: var(--muted);
+        font-weight: 700;
+    }
+
+    .bracket-wrap {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: scroll;
+        overflow-y: hidden;
+        padding: 0.25rem 0 1rem;
+        scroll-snap-type: none;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        touch-action: auto;
+    }
+
+    .bracket-board {
+        display: flex;
+        gap: 1.9rem;
+        align-items: flex-start;
+        width: max-content;
+        min-width: max-content;
+        padding: 0.25rem 1rem 0.5rem 0;
+        --slot: 8.8rem;
+    }
+
+    .bracket-controls {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin: -0.25rem 0 0.65rem;
+    }
+
+    .bracket-scroll-btn {
+        width: 2.65rem;
+        height: 2.65rem;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        font-size: 1.4rem;
+        line-height: 1;
+        box-shadow: 0 8px 18px rgba(23, 32, 51, 0.08);
+    }
+
+    .bracket-round {
+        width: 13.5rem;
+        display: grid;
+        grid-template-rows: auto;
+        gap: 0.7rem;
+        scroll-snap-align: start;
+    }
+
+    .bracket-title {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        position: sticky;
+        top: 4.4rem;
+        z-index: 2;
+        margin: 0;
+        padding: 0.7rem 0.8rem;
+        border-radius: 8px;
+        background: #172033;
+        color: #fff;
+        border-left: 6px solid var(--gold);
+        font-size: 0.95rem;
+    }
+
+    .bracket-matches {
+        display: grid;
+        gap: 0;
+        align-content: start;
+    }
+
+    .bracket-round.round-16avos .bracket-matches {
+        grid-template-rows: repeat(16, var(--slot));
+    }
+
+    .bracket-round.round-octavos .bracket-matches {
+        grid-template-rows: repeat(8, calc(var(--slot) * 2));
+    }
+
+    .bracket-round.round-cuartos .bracket-matches {
+        grid-template-rows: repeat(4, calc(var(--slot) * 4));
+    }
+
+    .bracket-round.round-semis .bracket-matches {
+        grid-template-rows: repeat(2, calc(var(--slot) * 8));
+    }
+
+    .bracket-round.round-tercer_puesto .bracket-matches,
+    .bracket-round.round-final .bracket-matches {
+        grid-template-rows: calc(var(--slot) * 16);
+    }
+
+    .bracket-round.round-final {
+        order: 6;
+    }
+
+    .bracket-round.round-tercer_puesto {
+        order: 5;
+    }
+
+    .bracket-round.round-semis {
+        order: 4;
+    }
+
+    .bracket-round.round-cuartos {
+        order: 3;
+    }
+
+    .bracket-round.round-octavos {
+        order: 2;
+    }
+
+    .bracket-round.round-16avos {
+        order: 1;
+    }
+
+    .bracket-card {
+        align-self: center;
+        min-height: 7.7rem;
+        overflow: hidden;
+    }
+
+    .bracket-hint {
+        margin: -0.2rem 0 0.75rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+
+    .bracket-card {
+        position: relative;
+        display: grid;
+        gap: 0;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 8px 18px rgba(23, 32, 51, 0.08);
+    }
+
+    .bracket-team {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+        min-height: 2.45rem;
+        padding: 0.5rem;
+        font-weight: 900;
+    }
+
+    .bracket-team + .bracket-team {
+        border-top: 1px solid var(--line);
+    }
+
+    .bracket-team-name {
+        overflow-wrap: anywhere;
+        font-size: 0.86rem;
+        line-height: 1.1;
+    }
+
+    .bracket-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.45rem 0.5rem;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        background: #f5f8fc;
+        font-size: 0.76rem;
+        font-weight: 800;
+        line-height: 1.15;
+    }
+
+    .bracket-card::after {
+        content: "";
+        position: absolute;
+        right: -1rem;
+        top: 50%;
+        width: 1rem;
+        border-top: 2px solid #9aa8ba;
+    }
+
+    .bracket-round:last-child .bracket-card::after,
+    .bracket-round:last-child .bracket-card::before {
+        display: none;
+    }
+
+    @media (max-width: 720px) {
+        main {
+            width: min(100% - 1rem, 720px);
+            margin-top: 0.75rem;
+        }
+
+        .group-content {
+            padding: 0.65rem;
+        }
+
+        .prediction-summary {
+            flex-wrap: wrap;
+        }
+
+        .prediction-match {
+            grid-template-columns: 1fr;
+            gap: 0.65rem;
+            padding: 0.65rem;
+        }
+
+        .compact-prediction {
+            width: 100%;
+        }
+
+        .bracket-board {
+            gap: 1.4rem;
+            padding-right: 3rem;
+            --slot: 9rem;
+        }
+
+        .bracket-title {
+            position: static;
+        }
+
+        .bracket-round {
+            width: 13rem;
+        }
+
+        .bracket-card::after {
+            display: none;
+        }
+
+        .bracket-team {
+            min-height: 2.25rem;
+            padding: 0.42rem 0.5rem;
+        }
+
+        .bracket-team-name {
+            font-size: 0.8rem;
+            line-height: 1.05;
+        }
+
+        .bracket-meta {
+            font-size: 0.72rem;
+        }
+
+        .bracket-wrap {
+            width: calc(100vw - 1rem);
+            max-width: calc(100vw - 1rem);
+            margin-left: calc((100% - 100vw) / 2 + 0.5rem);
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        .phase-tabs {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="predictions-hero">
+    <h1><span class="label-with-icon"><span class="icon light" aria-hidden="true"><i class="bi bi-bullseye"></i></span>Predicciones</span></h1>
+    <p>Completa tus marcadores y segui tus grupos o los cruces de eliminacion.</p>
+</section>
+
+<nav class="phase-tabs" aria-label="Fases de predicciones">
+    <a class="phase-tab {% if vista == 'previa' %}active{% endif %}" href="{% url 'core:predicciones' %}?vista=previa"><span class="icon {% if vista == 'previa' %}light{% endif %}" aria-hidden="true"><i class="bi bi-grid-1x2-fill"></i></span>Fase previa</a>
+    <a class="phase-tab {% if vista == 'final' %}active{% endif %}" href="{% url 'core:predicciones' %}?vista=final"><span class="icon {% if vista == 'final' %}light{% endif %}" aria-hidden="true"><i class="bi bi-trophy"></i></span>Fase final</a>
+    <a class="phase-tab {% if vista == 'llaves' %}active{% endif %}" href="{% url 'core:predicciones' %}?vista=llaves"><span class="icon {% if vista == 'llaves' %}light{% endif %}" aria-hidden="true"><i class="bi bi-diagram-2"></i></span>Llaves</a>
+</nav>
+
+{% if not user.is_authenticated %}
+    <section class="panel">
+        <p>Inicia sesion para guardar tus predicciones. Mientras tanto podes revisar los partidos.</p>
+        <a class="button with-icon" href="{% url 'core:login' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-box-arrow-in-right"></i></span>Ingresar</a>
+    </section>
+{% endif %}
+
+{% if user.is_authenticated %}
+    <div class="reset-all-wrap">
+        <form method="post" action="{% url 'core:resetear_todas_predicciones' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="reset-all-button" type="submit"><span class="icon danger" aria-hidden="true"><i class="bi bi-arrow-clockwise"></i></span>Restablecer todas</button>
+        </form>
+    </div>
+{% endif %}
+
+{% if vista == 'previa' %}
+    {% for seccion in secciones %}
+        <details class="group-prediction">
+            <summary class="prediction-summary">
+                <span class="label-with-icon"><span class="icon light" aria-hidden="true"><i class="bi bi-grid-1x2-fill"></i></span>Grupo {{ seccion.grupo }}</span>
+                <span class="group-flags" aria-label="Selecciones del grupo">
+                    {% for equipo in seccion.equipos %}
+                        <span class="group-flag" title="{{ equipo.nombre }}">
+                            {% if equipo.bandera_url %}
+                                <img class="group-flag-img" src="{{ equipo.bandera_url }}" alt="">
+                            {% else %}
+                                {{ equipo.bandera }}
+                            {% endif %}
+                        </span>
+                    {% endfor %}
+                </span>
+            </summary>
+            <div class="group-content">
+                <div class="table-wrap">
+                    <table class="standings">
+                        <thead>
+                            <tr>
+                                <th>Equipo</th>
+                                <th>Pts</th>
+                                <th>PJ</th>
+                                <th>PG</th>
+                                <th>PE</th>
+                                <th>PP</th>
+                                <th>GF</th>
+                                <th>GC</th>
+                                <th>DG</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fila in seccion.tabla %}
+                                <tr data-team-row data-team-id="{{ fila.equipo.id }}" data-team-name="{{ fila.equipo.nombre }}">
+                                    <td>
+                                        <span class="team-cell">
+                                            <span class="mini-flag" aria-hidden="true">
+                                                {% if fila.equipo.bandera_url %}
+                                                    <img class="mini-flag-img" src="{{ fila.equipo.bandera_url }}" alt="">
+                                                {% else %}
+                                                    {{ fila.equipo.bandera }}
+                                                {% endif %}
+                                            </span>
+                                            <span>{{ fila.equipo.nombre }}</span>
+                                        </span>
+                                    </td>
+                                    <td><strong data-stat="pts">{{ fila.pts }}</strong></td>
+                                    <td data-stat="pj">{{ fila.pj }}</td>
+                                    <td data-stat="pg">{{ fila.pg }}</td>
+                                    <td data-stat="pe">{{ fila.pe }}</td>
+                                    <td data-stat="pp">{{ fila.pp }}</td>
+                                    <td data-stat="gf">{{ fila.gf }}</td>
+                                    <td data-stat="gc">{{ fila.gc }}</td>
+                                    <td data-stat="dg">{{ fila.dg }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="group-matches">
+                    {% for partido in seccion.partidos %}
+                        {% include 'core/partials/prediccion_match.html' with partido=partido %}
+                    {% endfor %}
+                </div>
+            </div>
+        </details>
+    {% endfor %}
+{% elif vista == 'final' %}
+    {% for fase in fases_finales %}
+        <details class="group-prediction">
+            <summary class="prediction-summary">
+                <span class="label-with-icon"><span class="icon light" aria-hidden="true"><i class="bi bi-trophy"></i></span>{{ fase.titulo }}</span>
+            </summary>
+            <div class="group-content">
+                <div class="group-matches">
+                    {% for partido in fase.partidos %}
+                        {% include 'core/partials/prediccion_match.html' with partido=partido %}
+                    {% endfor %}
+                </div>
+            </div>
+        </details>
+    {% empty %}
+        <section class="panel">
+            <p>No hay partidos de fase final cargados.</p>
+        </section>
+    {% endfor %}
+{% else %}
+    <p class="bracket-hint"><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-diagram-2"></i></span>Desliza hacia la derecha para seguir las llaves ronda por ronda.</span></p>
+    {% if fases_finales %}
+        <div class="bracket-controls" aria-label="Controles de desplazamiento de llaves">
+            <button class="bracket-scroll-btn" type="button" data-bracket-scroll="-1" aria-label="Ver ronda anterior"><i class="bi bi-chevron-left"></i></button>
+            <button class="bracket-scroll-btn" type="button" data-bracket-scroll="1" aria-label="Ver ronda siguiente"><i class="bi bi-chevron-right"></i></button>
+        </div>
+        <section class="bracket-wrap" aria-label="Llaves de fase final">
+            <div class="bracket-board">
+                {% for fase in fases_finales %}
+                    <div class="bracket-round round-{{ fase.fase }}">
+                        <h2 class="bracket-title"><span class="icon light" aria-hidden="true"><i class="bi bi-trophy"></i></span>{{ fase.titulo }}</h2>
+                        <div class="bracket-matches">
+                            {% for partido in fase.partidos %}
+                                {% with local_nombre=partido.display_local_nombre|default:partido.local_nombre visitante_nombre=partido.display_visitante_nombre|default:partido.visitante_nombre local_bandera=partido.display_local_bandera|default:partido.bandera_local visitante_bandera=partido.display_visitante_bandera|default:partido.bandera_visitante local_bandera_url=partido.display_local_bandera_url|default:partido.bandera_local_url visitante_bandera_url=partido.display_visitante_bandera_url|default:partido.bandera_visitante_url %}
+                                    <article class="bracket-card">
+                                        <div class="bracket-team">
+                                            <span class="mini-flag" aria-hidden="true">
+                                                {% if local_bandera_url %}
+                                                    <img class="mini-flag-img" src="{{ local_bandera_url }}" alt="">
+                                                {% else %}
+                                                    {{ local_bandera }}
+                                                {% endif %}
+                                            </span>
+                                            <span class="bracket-team-name">{{ local_nombre }}</span>
+                                        </div>
+                                        <div class="bracket-team">
+                                            <span class="mini-flag" aria-hidden="true">
+                                                {% if visitante_bandera_url %}
+                                                    <img class="mini-flag-img" src="{{ visitante_bandera_url }}" alt="">
+                                                {% else %}
+                                                    {{ visitante_bandera }}
+                                                {% endif %}
+                                            </span>
+                                            <span class="bracket-team-name">{{ visitante_nombre }}</span>
+                                        </div>
+                                        <div class="bracket-meta"><i class="bi bi-hash" aria-hidden="true"></i> Partido {{ partido.numero }} - {{ partido.fecha_argentina|date:"d/m" }} - {{ partido.horario_argentina }}</div>
+                                    </article>
+                                {% endwith %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    {% else %}
+        <section class="panel">
+            <p>No hay partidos de fase final cargados.</p>
+        </section>
+    {% endif %}
+{% endif %}
+<script>
+    function crearFilaBase(row) {
+        return {
+            row,
+            teamId: row.dataset.teamId,
+            name: row.dataset.teamName || '',
+            pts: 0,
+            pj: 0,
+            pg: 0,
+            pe: 0,
+            pp: 0,
+            gf: 0,
+            gc: 0,
+            dg: 0,
+        };
+    }
+
+    function sumarResultado(local, visitante, golesLocal, golesVisitante) {
+        local.pj += 1;
+        visitante.pj += 1;
+        local.gf += golesLocal;
+        local.gc += golesVisitante;
+        visitante.gf += golesVisitante;
+        visitante.gc += golesLocal;
+
+        if (golesLocal > golesVisitante) {
+            local.pg += 1;
+            local.pts += 3;
+            visitante.pp += 1;
+        } else if (golesLocal < golesVisitante) {
+            visitante.pg += 1;
+            visitante.pts += 3;
+            local.pp += 1;
+        } else {
+            local.pe += 1;
+            visitante.pe += 1;
+            local.pts += 1;
+            visitante.pts += 1;
+        }
+    }
+
+    function pintarFila(fila) {
+        fila.dg = fila.gf - fila.gc;
+        ['pts', 'pj', 'pg', 'pe', 'pp', 'gf', 'gc', 'dg'].forEach(function (stat) {
+            const cell = fila.row.querySelector(`[data-stat="${stat}"]`);
+            if (cell) {
+                cell.textContent = fila[stat];
+            }
+        });
+    }
+
+    function actualizarTablaGrupo(group) {
+        const tbody = group.querySelector('.standings tbody');
+        if (!tbody) {
+            return;
+        }
+
+        const tabla = {};
+        tbody.querySelectorAll('[data-team-row]').forEach(function (row) {
+            const fila = crearFilaBase(row);
+            tabla[fila.teamId] = fila;
+        });
+
+        group.querySelectorAll('.prediction-match[data-local-id][data-visitante-id]').forEach(function (match) {
+            const localId = match.dataset.localId;
+            const visitanteId = match.dataset.visitanteId;
+            if (!localId || !visitanteId || !tabla[localId] || !tabla[visitanteId]) {
+                return;
+            }
+
+            const golesLocalInput = match.querySelector('[name="goles_local"]');
+            const golesVisitanteInput = match.querySelector('[name="goles_visitante"]');
+            if (!golesLocalInput || !golesVisitanteInput || golesLocalInput.value === '' || golesVisitanteInput.value === '') {
+                return;
+            }
+
+            const golesLocal = Number(golesLocalInput.value);
+            const golesVisitante = Number(golesVisitanteInput.value);
+            if (!Number.isInteger(golesLocal) || !Number.isInteger(golesVisitante)) {
+                return;
+            }
+
+            sumarResultado(tabla[localId], tabla[visitanteId], golesLocal, golesVisitante);
+        });
+
+        Object.values(tabla)
+            .sort(function (a, b) {
+                return (
+                    b.pts - a.pts
+                    || (b.gf - b.gc) - (a.gf - a.gc)
+                    || b.gf - a.gf
+                    || a.name.localeCompare(b.name)
+                );
+            })
+            .forEach(function (fila) {
+                pintarFila(fila);
+                tbody.appendChild(fila.row);
+            });
+    }
+
+    function actualizarTablaCercana(target) {
+        const group = target.closest('.group-prediction');
+        if (group) {
+            actualizarTablaGrupo(group);
+        }
+    }
+
+    document.addEventListener('input', function (event) {
+        if (event.target.closest('.group-prediction .autosave-prediction')) {
+            actualizarTablaCercana(event.target);
+        }
+    });
+
+    document.addEventListener('prediction:saved', function (event) {
+        actualizarTablaCercana(event.target);
+    });
+
+    document.addEventListener('prediction:reset', function (event) {
+        actualizarTablaCercana(event.target);
+    });
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-bracket-scroll]');
+        if (!button) {
+            return;
+        }
+        const wrap = document.querySelector('.bracket-wrap');
+        if (!wrap) {
+            return;
+        }
+        const direction = Number(button.dataset.bracketScroll || 1);
+        const amount = Math.max(260, wrap.clientWidth * 0.82);
+        wrap.scrollBy({ left: direction * amount, behavior: 'smooth' });
+    });
+</script>
+{% endblock %}

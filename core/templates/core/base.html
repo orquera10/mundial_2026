@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Mundial 2026{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --ink: #172033;
+            --muted: #607089;
+            --line: #d8dee9;
+            --surface: #ffffff;
+            --field: #f7f9fc;
+            --brand: #007852;
+            --brand-strong: #005c3f;
+            --accent: #cd202c;
+            --blue: #004b8d;
+            --gold: #d9a441;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #edf2f7;
+            color: var(--ink);
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.65rem 1rem;
+            background: linear-gradient(90deg, var(--blue), var(--brand));
+            color: #fff;
+            border-bottom: 4px solid var(--gold);
+            box-shadow: 0 10px 24px rgba(23, 32, 51, 0.18);
+        }
+
+        header strong {
+            white-space: nowrap;
+        }
+
+        header a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        header nav {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        main {
+            width: min(1180px, calc(100% - 2rem));
+            margin: 1.5rem auto 2.5rem;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 14px 32px rgba(23, 32, 51, 0.08);
+        }
+
+        form {
+            display: grid;
+            gap: 1rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.7rem;
+            border: 1px solid #bfcbda;
+            border-radius: 6px;
+            background: var(--field);
+            color: var(--ink);
+        }
+
+        button, .button {
+            width: fit-content;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 0.7rem 1rem;
+            background: var(--brand);
+            color: #fff;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        button:hover, .button:hover {
+            background: var(--brand-strong);
+        }
+
+        .button.secondary {
+            background: #fff;
+            border-color: var(--line);
+            color: var(--ink);
+        }
+
+.button.secondary:hover {
+             background: #f3f6fa;
+         }
+
+         .icon {
+             width: 1.45rem;
+             height: 1.45rem;
+             display: inline-grid;
+             place-items: center;
+             flex: 0 0 auto;
+             border-radius: 50%;
+             background: rgba(0, 75, 141, 0.09);
+             color: var(--blue);
+             font-size: 0.82rem;
+             font-weight: 900;
+             line-height: 1;
+         }
+
+         .icon i {
+             font-size: 1.05em;
+             display: block;
+         }
+
+         .icon.light i {
+             color: #fff;
+         }
+
+         .icon.gold i {
+             color: #8a5b00;
+         }
+
+         .icon.danger i {
+             color: #9f1239;
+         }
+
+         .icon.light {
+             background: rgba(255, 255, 255, 0.14);
+             color: #fff;
+         }
+
+        .icon.gold {
+            background: #fff5d8;
+            color: #8a5b00;
+        }
+
+        .icon.danger {
+            background: #fff1f2;
+            color: #9f1239;
+        }
+
+        .with-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+        }
+
+        .label-with-icon {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .messages {
+            margin-bottom: 1rem;
+        }
+
+        .message {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            background: #e2f4ec;
+            color: #09513f;
+        }
+
+        .errorlist {
+            color: #b91c1c;
+            margin: 0.25rem 0 0;
+            padding-left: 1.25rem;
+        }
+
+        .site-name {
+            display: inline-flex;
+            align-items: center;
+            font-size: 1.05rem;
+            letter-spacing: 0;
+        }
+
+        .site-logo-link {
+            display: inline-flex;
+            align-items: center;
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .worldcup-logo {
+            display: inline-flex;
+            align-items: center;
+            color: inherit;
+            line-height: 1;
+        }
+
+        .logo-image {
+            display: block;
+            width: 5.8rem;
+            max-width: 100%;
+            height: auto;
+            aspect-ratio: 16 / 9;
+            object-fit: contain;
+            border-radius: 8px;
+            background: transparent;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        .logo-large .logo-image {
+            width: min(13.5rem, 38vw);
+            border: 0;
+            box-shadow: none;
+        }
+
+        .panel-logo {
+            margin-bottom: 1rem;
+            color: var(--ink);
+        }
+
+        .panel-logo .logo-image {
+            width: min(12rem, 100%);
+        }
+
+        .nav-form {
+            display: block;
+        }
+
+        .nav-button {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #fff;
+            text-align: left;
+        }
+
+        .nav-menu {
+            justify-self: end;
+            position: relative;
+        }
+
+        .nav-toggle {
+            list-style: none;
+            width: 2.8rem;
+            height: 2.8rem;
+            display: inline-grid;
+            place-items: center;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            background: rgba(255, 255, 255, 0.12);
+            cursor: pointer;
+        }
+
+        .nav-toggle::-webkit-details-marker {
+            display: none;
+        }
+
+        .hamburger-icon,
+        .hamburger-icon::before,
+        .hamburger-icon::after {
+            display: block;
+            width: 1.25rem;
+            height: 0.14rem;
+            border-radius: 999px;
+            background: #fff;
+        }
+
+        .hamburger-icon {
+            position: relative;
+        }
+
+        .hamburger-icon::before,
+        .hamburger-icon::after {
+            content: "";
+            position: absolute;
+            left: 0;
+        }
+
+        .hamburger-icon::before {
+            top: -0.42rem;
+        }
+
+        .hamburger-icon::after {
+            top: 0.42rem;
+        }
+
+        .nav-menu[open] .hamburger-icon {
+            background: transparent;
+        }
+
+        .nav-menu[open] .hamburger-icon::before {
+            top: 0;
+            transform: rotate(45deg);
+        }
+
+        .nav-menu[open] .hamburger-icon::after {
+            top: 0;
+            transform: rotate(-45deg);
+        }
+
+        .nav-panel {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 0.55rem);
+            width: min(18rem, calc(100vw - 2rem));
+            display: grid;
+            gap: 0.65rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            background: #172033;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+        }
+
+        .profile-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            min-width: 0;
+            padding: 0.65rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .profile-icon {
+            width: 2.25rem;
+            height: 2.25rem;
+            display: inline-grid;
+            place-items: center;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            background: #fff;
+            color: var(--blue);
+            font-weight: 900;
+        }
+
+        .profile-text {
+            min-width: 0;
+            display: grid;
+            gap: 0.15rem;
+            color: #fff;
+        }
+
+        .profile-text small {
+            color: #cbd7e6;
+            font-weight: 700;
+        }
+
+        .profile-text strong {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .nav-panel a,
+        .nav-panel button {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            width: 100%;
+            margin: 0;
+            border-radius: 8px;
+        }
+
+        .nav-panel a {
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: 800;
+        }
+
+        .nav-panel a:hover,
+        .nav-button:hover {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        @media (max-width: 720px) {
+            header {
+                padding: 0.65rem 0.85rem;
+            }
+
+            .logo-image {
+                width: 5.5rem;
+            }
+
+            .nav-panel {
+                right: -0.2rem;
+            }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <a class="site-logo-link" href="{% url 'core:home' %}" aria-label="Ir al inicio">
+            <strong class="site-name">{% include 'core/partials/logo_mundial.html' %}</strong>
+        </a>
+        <span aria-hidden="true"></span>
+        <details class="nav-menu">
+            <summary class="nav-toggle" aria-label="Abrir menu">
+                <span class="hamburger-icon" aria-hidden="true"></span>
+            </summary>
+            <nav class="nav-panel" aria-label="Menu principal">
+                <a href="{% url 'core:predicciones' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-bullseye"></i></span>Predicciones</a>
+            {% if user.is_authenticated %}
+                <div class="profile-pill">
+                    <span class="profile-icon" aria-hidden="true">{{ user.username|first|upper }}</span>
+                    <span class="profile-text">
+                        <small>Perfil</small>
+                        <strong>{{ user.username }}</strong>
+                    </span>
+                </div>
+                <form class="nav-form" method="post" action="{% url 'core:logout' %}">
+                    {% csrf_token %}
+                    <button class="nav-button" type="submit"><span class="icon light" aria-hidden="true"><i class="bi bi-box-arrow-right"></i></span>Salir</button>
+                </form>
+            {% else %}
+                <div class="profile-pill">
+                    <span class="profile-icon" aria-hidden="true">U</span>
+                    <span class="profile-text">
+                        <small>Perfil</small>
+                        <strong>Invitado</strong>
+                    </span>
+                </div>
+                <a href="{% url 'core:login' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-box-arrow-in-right"></i></span>Ingresar</a>
+                <a href="{% url 'core:registro' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-person-plus"></i></span>Registrarse</a>
+            {% endif %}
+            </nav>
+        </details>
+    </header>
+
+    <main>
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="message"><span class="icon" aria-hidden="true"><i class="bi bi-check-lg"></i></span>{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+    <script>
+        document.addEventListener('input', function (event) {
+            const input = event.target;
+            const form = input.closest('.autosave-prediction');
+            if (!form) {
+                return;
+            }
+
+            clearTimeout(form.dataset.autosaveTimer);
+            form.dataset.autosaveTimer = setTimeout(function () {
+                const local = form.querySelector('[name="goles_local"]');
+                const visitante = form.querySelector('[name="goles_visitante"]');
+                const status = form.querySelector('.autosave-status');
+
+                if (!local || !visitante || local.value === '' || visitante.value === '') {
+                    if (status) {
+                        status.textContent = 'Completa ambos goles';
+                    }
+                    return;
+                }
+
+                if (status) {
+                    status.textContent = 'Guardando...';
+                }
+
+                fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('No se pudo guardar');
+                        }
+                        return response.json();
+                    })
+                    .then(function () {
+                        if (status) {
+                            status.textContent = 'Guardada';
+                        }
+                        form.dispatchEvent(new CustomEvent('prediction:saved', { bubbles: true }));
+                    })
+                    .catch(function () {
+                        if (status) {
+                            status.textContent = 'No se pudo guardar';
+                        }
+                    });
+            }, 500);
+        });
+
+        document.addEventListener('submit', function (event) {
+            const form = event.target.closest('.reset-prediction-form');
+            if (!form) {
+                return;
+            }
+            event.preventDefault();
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('No se pudo resetear');
+                    }
+                    return response.json();
+                })
+                .then(function () {
+                    const container = form.parentElement;
+                    if (!container) {
+                        return;
+                    }
+                    container.querySelectorAll('.autosave-prediction input[type="number"]').forEach(function (input) {
+                        input.value = '';
+                    });
+                    const status = container.querySelector('.autosave-status');
+                    if (status) {
+                        status.textContent = 'Completa ambos goles';
+                    }
+                    container.dispatchEvent(new CustomEvent('prediction:reset', { bubbles: true }));
+                })
+                .catch(function () {
+                    const container = form.parentElement;
+                    const status = container ? container.querySelector('.autosave-status') : null;
+                    if (status) {
+                        status.textContent = 'No se pudo resetear';
+                    }
+                });
+        });
+    </script>
+</body>
+</html>

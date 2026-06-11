@@ -1,0 +1,94 @@
+{% with prediccion=partido.prediccion_usuario %}
+<details class="match-card {{ partido.estado }}" data-partido-id="{{ partido.id }}">
+    <summary class="match-summary">
+        <div class="compact-meta">
+            <span><i class="bi bi-hash" aria-hidden="true"></i>{{ partido.numero }}</span>
+            <span class="compact-time"><i class="bi bi-clock" aria-hidden="true"></i>{{ partido.fecha_argentina|date:"d/m" }} · {{ partido.horario_argentina }}</span>
+            <span class="badge {{ partido.estado }}">{{ partido.get_estado_display }}</span>
+        </div>
+
+        <div class="compact-scoreline">
+            <div class="compact-team">
+                <span class="flag compact-flag" aria-hidden="true">
+                    {% if partido.bandera_local_url %}
+                        <img class="flag-img" src="{{ partido.bandera_local_url }}" alt="">
+                    {% else %}
+                        {{ partido.bandera_local }}
+                    {% endif %}
+                </span>
+                <span class="team-name">{{ partido.local_nombre }}</span>
+            </div>
+
+            <div class="score-wrap">
+                <div class="score">{{ partido.marcador }}</div>
+            </div>
+
+            <div class="compact-team">
+                <span class="flag compact-flag" aria-hidden="true">
+                    {% if partido.bandera_visitante_url %}
+                        <img class="flag-img" src="{{ partido.bandera_visitante_url }}" alt="">
+                    {% else %}
+                        {{ partido.bandera_visitante }}
+                    {% endif %}
+                </span>
+                <span class="team-name">{{ partido.visitante_nombre }}</span>
+            </div>
+        </div>
+
+        <div class="summary-side">
+            <span class="expand-hint" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+        </div>
+    </summary>
+
+    <div class="match-expanded">
+        <div class="match-details" aria-label="Informacion del partido">
+            <span class="detail-pill"><i class="bi bi-trophy" aria-hidden="true"></i>{{ partido.get_fase_display }}{% if partido.grupo %} - Grupo {{ partido.grupo }}{% endif %}</span>
+            <span class="detail-pill"><i class="bi bi-geo-alt" aria-hidden="true"></i>{{ partido.estadio }}</span>
+            {% if partido.ciudad %}
+                <span class="detail-pill"><i class="bi bi-geo" aria-hidden="true"></i>{{ partido.ciudad }}</span>
+            {% endif %}
+            {% if partido.canales_argentina %}
+                <span class="detail-pill"><i class="bi bi-tv" aria-hidden="true"></i>{{ partido.canales_argentina }}</span>
+            {% endif %}
+            {% if partido.streaming_argentina %}
+                <span class="detail-pill"><i class="bi bi-play-circle" aria-hidden="true"></i>{{ partido.streaming_argentina }}</span>
+            {% endif %}
+            {% if partido.transmision_notas %}
+                <span class="detail-pill"><i class="bi bi-info-circle" aria-hidden="true"></i>{{ partido.transmision_notas }}</span>
+            {% endif %}
+        </div>
+
+        {% if user.is_authenticated %}
+            <div class="match-actions">
+                <form class="favorite-form" method="post" action="{% url 'core:alternar_favorito' partido.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button class="favorite-button {% if partido.id in favoritos_ids %}active{% endif %}" type="submit">
+                        <i class="bi {% if partido.id in favoritos_ids %}bi-star-fill{% else %}bi-star{% endif %}" aria-hidden="true"></i>{% if partido.id in favoritos_ids %}Favorito{% else %}Favorito{% endif %}
+                    </button>
+                </form>
+                <form class="prediction-form autosave-prediction" method="post" action="{% url 'core:guardar_prediccion' partido.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <label>
+                        <span>{{ partido.local_nombre }}</span>
+                        <input type="number" min="0" max="99" name="goles_local" value="{{ prediccion.goles_local }}" aria-label="Goles de {{ partido.local_nombre }}">
+                    </label>
+                    <label>
+                        <span>{{ partido.visitante_nombre }}</span>
+                        <input type="number" min="0" max="99" name="goles_visitante" value="{{ prediccion.goles_visitante }}" aria-label="Goles de {{ partido.visitante_nombre }}">
+                    </label>
+                    <span class="prediction-footer">
+                        <span class="autosave-status" aria-live="polite">{% if prediccion %}Guardada{% else %}Completa ambos goles{% endif %}</span>
+                        <button class="reset-prediction-button" type="submit" form="reset-card-prediction-{{ partido.id }}" title="Restablecer prediccion" aria-label="Restablecer prediccion"><i class="bi bi-arrow-clockwise"></i></button>
+                    </span>
+                </form>
+                <form id="reset-card-prediction-{{ partido.id }}" class="reset-prediction-form" method="post" action="{% url 'core:resetear_prediccion' partido.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                </form>
+            </div>
+        {% endif %}
+    </div>
+</details>
+{% endwith %}

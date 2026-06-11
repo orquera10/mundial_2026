@@ -1,0 +1,10 @@
+Watching for file changes with StatReloader
+[11/Jun/2026 09:22:05] "GET / HTTP/1.1" 200 148127
+[11/Jun/2026 09:22:05,525] - Broken pipe from ('127.0.0.1', 61141)
+[11/Jun/2026 09:22:10] "GET / HTTP/1.1" 200 295492
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+[11/Jun/2026 09:22:10] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 3935
+[11/Jun/2026 09:22:10] "GET /static/core/img/logos/logoMundial.webp HTTP/1.1" 200 40534
+[11/Jun/2026 09:22:17] "GET / HTTP/1.1" 200 295492
+Not Found: /.well-known/appspecific/com.chrome.devtools.json
+[11/Jun/2026 09:22:17] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 3935

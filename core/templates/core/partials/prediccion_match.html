@@ -1,0 +1,57 @@
+{% with prediccion=partido.prediccion_usuario %}
+{% with local_nombre=partido.display_local_nombre|default:partido.local_nombre visitante_nombre=partido.display_visitante_nombre|default:partido.visitante_nombre local_bandera=partido.display_local_bandera|default:partido.bandera_local visitante_bandera=partido.display_visitante_bandera|default:partido.bandera_visitante local_bandera_url=partido.display_local_bandera_url|default:partido.bandera_local_url visitante_bandera_url=partido.display_visitante_bandera_url|default:partido.bandera_visitante_url %}
+<article class="prediction-match" data-partido-id="{{ partido.id }}" data-local-id="{{ partido.equipo_local_id|default:'' }}" data-visitante-id="{{ partido.equipo_visitante_id|default:'' }}">
+    <div class="match-info">
+        <span class="match-kicker"><i class="bi bi-hash" aria-hidden="true"></i> Partido {{ partido.numero }} - {{ partido.fecha_argentina|date:"d/m" }} - {{ partido.horario_argentina }}</span>
+        <div class="match-teams">
+            <div class="match-team">
+                <span class="mini-flag" aria-hidden="true">
+                    {% if local_bandera_url %}
+                        <img class="mini-flag-img" src="{{ local_bandera_url }}" alt="">
+                    {% else %}
+                        {{ local_bandera }}
+                    {% endif %}
+                </span>
+                <span>{{ local_nombre }}</span>
+            </div>
+            <div class="match-team">
+                <span class="mini-flag" aria-hidden="true">
+                    {% if visitante_bandera_url %}
+                        <img class="mini-flag-img" src="{{ visitante_bandera_url }}" alt="">
+                    {% else %}
+                        {{ visitante_bandera }}
+                    {% endif %}
+                </span>
+                <span>{{ visitante_nombre }}</span>
+            </div>
+        </div>
+        <span class="match-place"><i class="bi bi-geo-alt" aria-hidden="true"></i>{{ partido.estadio }}{% if partido.ciudad %}, {{ partido.ciudad }}{% endif %}</span>
+    </div>
+
+    {% if user.is_authenticated %}
+        <form class="compact-prediction autosave-prediction" method="post" action="{% url 'core:guardar_prediccion' partido.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <label>
+                <span>{{ local_nombre }}</span>
+                <input type="number" min="0" max="99" name="goles_local" value="{{ prediccion.goles_local }}" aria-label="Goles de {{ local_nombre }}">
+            </label>
+            <label>
+                <span>{{ visitante_nombre }}</span>
+                <input type="number" min="0" max="99" name="goles_visitante" value="{{ prediccion.goles_visitante }}" aria-label="Goles de {{ visitante_nombre }}">
+            </label>
+            <span class="prediction-footer">
+                <span class="autosave-status" aria-live="polite">{% if prediccion %}Guardada{% else %}Completa ambos goles{% endif %}</span>
+                <button class="reset-prediction-button" type="submit" form="reset-prediction-{{ partido.id }}" title="Restablecer prediccion" aria-label="Restablecer prediccion"><i class="bi bi-arrow-clockwise"></i></button>
+            </span>
+        </form>
+        <form id="reset-prediction-{{ partido.id }}" class="reset-prediction-form" method="post" action="{% url 'core:resetear_prediccion' partido.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        </form>
+    {% else %}
+        <div class="locked-prediction"><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-box-arrow-in-right"></i></span>Inicia sesion para completar este resultado.</span></div>
+    {% endif %}
+</article>
+{% endwith %}
+{% endwith %}

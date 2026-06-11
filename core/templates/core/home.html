@@ -1,0 +1,1036 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Partidos | Mundial 2026{% endblock %}
+
+{% block extra_head %}
+<style>
+    .hero {
+        display: grid;
+        grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
+        gap: 1.2rem;
+        align-items: center;
+        margin: -0.25rem -0.25rem 1rem;
+        padding: 1.25rem;
+        border-radius: 8px;
+        color: #fff;
+        background:
+            linear-gradient(135deg, rgba(0, 75, 141, 0.96), rgba(0, 120, 82, 0.92) 48%, rgba(205, 32, 44, 0.94)),
+            #004b8d;
+        border-bottom: 5px solid #d9a441;
+    }
+
+    .hero-logo {
+        color: #fff;
+        align-self: center;
+        justify-self: center;
+    }
+
+    .hero-text {
+        min-width: 0;
+    }
+
+    .hero h1 {
+        margin: 0 0 0.55rem;
+        max-width: 780px;
+        font-size: clamp(1.85rem, 9vw, 3.1rem);
+        line-height: 1.02;
+    }
+
+    .hero p {
+        margin: 0;
+        max-width: 700px;
+        color: #edf6ff;
+    }
+
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.6rem;
+        margin: 1rem 0;
+    }
+
+    .stat {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.65rem;
+        align-items: center;
+        min-height: 78px;
+        padding: 0.85rem;
+        border-radius: 8px;
+        background: #fff;
+        border: 1px solid var(--line);
+    }
+
+    .stat strong {
+        display: block;
+        color: #004b8d;
+        font-size: 1.55rem;
+        line-height: 1;
+    }
+
+    .stat span {
+        display: block;
+        margin-top: 0.35rem;
+        color: var(--muted);
+        font-size: 0.82rem;
+    }
+
+    .stat .icon {
+        width: 2rem;
+        height: 2rem;
+        display: inline-grid;
+        margin-top: 0;
+    }
+
+    .stat .icon i {
+        font-size: 1.1em;
+    }
+
+    .date-box .icon {
+        width: 1.65rem;
+        height: 1.65rem;
+        display: inline-grid;
+        margin: 0 0 0.2rem;
+        color: var(--blue);
+    }
+
+    .date-box .icon i {
+        font-size: 1.05em;
+    }
+
+    .filters {
+        display: grid;
+        grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(120px, 1fr)) auto auto;
+        gap: 0.7rem;
+        align-items: end;
+    }
+
+    .check-row {
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-weight: 700;
+    }
+
+    .check-row input {
+        width: auto;
+        accent-color: #007852;
+    }
+
+    .login-note {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.9rem;
+        padding-top: 0.9rem;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+    }
+
+    .section-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 1rem;
+        margin: 1.35rem 0 0.7rem;
+    }
+
+    .section-title h2 {
+        margin: 0;
+        font-size: 1.18rem;
+    }
+
+    .section-title p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+    }
+
+    .match-list {
+        display: grid;
+        gap: 0.7rem;
+    }
+
+    .group-block {
+        margin-top: 1rem;
+    }
+
+    .group-heading {
+        list-style: none;
+        cursor: pointer;
+        margin: 0 0 0.65rem;
+        padding: 0.55rem 0.75rem;
+        border-radius: 8px;
+        color: #fff;
+        background: #172033;
+        border-left: 6px solid #d9a441;
+        font-size: 1rem;
+        font-weight: 800;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 2.7rem;
+    }
+
+    .group-heading::-webkit-details-marker {
+        display: none;
+    }
+
+    .group-heading::after {
+        content: "+";
+        width: 1.6rem;
+        height: 1.6rem;
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        font-size: 1.1rem;
+        line-height: 1;
+    }
+
+    .group-block[open] .group-heading::after {
+        content: "-";
+    }
+
+    .group-count {
+        margin-left: auto;
+        color: #dbe7f3;
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .group-flags {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+        margin-left: 0.35rem;
+    }
+
+    .group-flag {
+        width: 1.6rem;
+        height: 1.6rem;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        font-size: 1rem;
+        overflow: hidden;
+    }
+
+    .match-card {
+        border: 1px solid var(--line);
+        border-left: 5px solid #007852;
+        border-radius: 8px;
+        background: #fff;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .match-card.en_vivo {
+        border-left-color: #cd202c;
+    }
+
+    .match-card.finalizado {
+        border-left-color: #d9a441;
+    }
+
+    .match-summary {
+        list-style: none;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.55rem;
+        align-items: stretch;
+        padding: 0.7rem;
+        cursor: pointer;
+    }
+
+    .match-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .match-expanded {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(170px, auto);
+        gap: 0.85rem;
+        align-items: start;
+        padding: 0 0.95rem 0.95rem;
+        border-top: 1px solid #edf1f6;
+    }
+
+    .summary-side {
+        display: grid;
+        place-items: center;
+    }
+
+    .compact-meta {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 800;
+    }
+
+    .compact-meta > span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.24rem;
+        min-width: 0;
+    }
+
+    .compact-time {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .compact-scoreline {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 0.55rem;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .compact-team {
+        display: grid;
+        justify-items: center;
+        gap: 0.3rem;
+        min-width: 0;
+        text-align: center;
+        font-weight: 900;
+    }
+
+    .compact-team .team-name {
+        max-width: 100%;
+        font-size: 0.82rem;
+        line-height: 1.05;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .expand-hint {
+        width: 1.6rem;
+        height: 1.6rem;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 50%;
+        background: #f1f6fb;
+        color: var(--muted);
+        transition: transform 0.18s ease;
+    }
+
+    .match-card[open] .expand-hint {
+        transform: rotate(180deg);
+    }
+
+    .match-topline {
+        min-width: 0;
+        display: grid;
+        gap: 0.55rem;
+        align-content: start;
+    }
+
+    .date-box {
+        display: grid;
+        place-items: center;
+        align-content: center;
+        min-height: 76px;
+        border-radius: 8px;
+        background: #f1f6fb;
+        text-align: center;
+        color: #24324a;
+    }
+
+    .date-box strong {
+        font-size: 1rem;
+    }
+
+    .date-box span {
+        display: block;
+        margin-top: 0.25rem;
+        font-size: 0.78rem;
+        color: var(--muted);
+    }
+
+    .date-box .icon {
+        width: 1.65rem;
+        height: 1.65rem;
+        display: inline-grid;
+        margin: 0 0 0.2rem;
+        color: var(--blue);
+    }
+
+    .match-status {
+        display: grid;
+        gap: 0.45rem;
+        justify-items: start;
+    }
+
+    .match-number {
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 800;
+    }
+
+    .teams {
+        min-width: 0;
+        display: grid;
+        gap: 0.5rem;
+    }
+
+    .team-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+        font-weight: 800;
+        font-size: 1.04rem;
+    }
+
+    .flag {
+        width: 2rem;
+        height: 2rem;
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: #f5f7fb;
+        border: 1px solid #d9e1ec;
+        font-size: 1.22rem;
+        overflow: hidden;
+    }
+
+    .compact-flag {
+        width: 2.15rem;
+        height: 2.15rem;
+    }
+
+    .flag-img,
+    .group-flag-img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+    }
+
+    .team-name {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .match-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        color: var(--muted);
+        font-size: 0.86rem;
+        padding-top: 0.85rem;
+    }
+
+    .detail-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.32rem;
+        padding: 0.32rem 0.5rem;
+        border-radius: 999px;
+        background: #f2f5f9;
+    }
+
+    .side {
+        display: grid;
+        justify-items: end;
+        align-content: start;
+        gap: 0.65rem;
+        min-width: 0;
+    }
+
+    .score-wrap {
+        display: grid;
+        justify-items: end;
+    }
+
+    .score {
+        min-width: 58px;
+        padding: 0.48rem 0.58rem;
+        border-radius: 8px;
+        background: #172033;
+        color: #fff;
+        text-align: center;
+        font-weight: 900;
+    }
+
+    .badge {
+        display: inline-flex;
+        width: fit-content;
+        border-radius: 999px;
+        padding: 0.35rem 0.62rem;
+        color: #fff;
+        background: #004b8d;
+        font-size: 0.75rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .badge.programado {
+        background: #004b8d;
+    }
+
+    .badge.en_vivo {
+        background: #cd202c;
+    }
+
+    .badge.finalizado {
+        background: #a57512;
+    }
+
+    .favorite-form {
+        display: block;
+    }
+
+    .match-actions {
+        display: grid;
+        gap: 0.55rem;
+        justify-items: end;
+        width: 100%;
+        min-width: 0;
+        padding-top: 0.85rem;
+    }
+
+    .prediction-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 0.45rem;
+        align-items: end;
+        width: min(100%, 240px);
+        padding: 0.55rem;
+        border-radius: 8px;
+        background: #f5f8fc;
+        border: 1px solid #dbe3ee;
+    }
+
+    .prediction-form label {
+        display: grid;
+        gap: 0.28rem;
+        margin: 0;
+        min-width: 0;
+    }
+
+    .prediction-form span {
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 800;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .prediction-form input {
+        min-width: 0;
+        padding: 0.45rem;
+        text-align: center;
+        font-weight: 800;
+    }
+
+    .autosave-status {
+        min-height: 1.1rem;
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .prediction-footer {
+        grid-column: 1 / -1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        min-height: 1.45rem;
+    }
+
+    .favorite-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        min-width: 94px;
+        padding: 0.62rem 0.72rem;
+        border-color: #c7d0dc;
+        background: #fff;
+        color: var(--ink);
+    }
+
+    .favorite-button.active {
+        border-color: #d9a441;
+        background: #fff5d8;
+        color: #694300;
+    }
+
+    .reset-prediction-form {
+        display: none;
+    }
+
+    .reset-prediction-button {
+        width: 1.45rem;
+        height: 1.45rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border-radius: 50%;
+        border: 1px solid #d9e1ec;
+        background: #fff;
+        color: #9f1239;
+        line-height: 1;
+    }
+
+    .reset-prediction-button i {
+        font-size: 0.9em;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .standings {
+        width: 100%;
+        min-width: 560px;
+        border-collapse: collapse;
+        background: #fff;
+    }
+
+    .standings th,
+    .standings td {
+        padding: 0.62rem 0.55rem;
+        border-bottom: 1px solid var(--line);
+        text-align: center;
+        font-size: 0.9rem;
+    }
+
+    .standings th {
+        background: #f1f6fb;
+        color: var(--muted);
+        font-size: 0.76rem;
+        text-transform: uppercase;
+    }
+
+    .standings td:first-child,
+    .standings th:first-child {
+        text-align: left;
+    }
+
+    .team-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+        font-weight: 800;
+    }
+
+    .mini-flag {
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        width: 1.8rem;
+        height: 1.8rem;
+        overflow: hidden;
+    }
+
+    .mini-flag-img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+    }
+
+    .empty {
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px dashed #aab6c5;
+        background: #fff;
+        color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+        main {
+            width: min(100% - 1rem, 720px);
+            margin-top: 0.75rem;
+        }
+
+        .stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .filters {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .filters > div:first-child,
+        .filters button,
+        .filters .button {
+            width: 100%;
+            grid-column: 1 / -1;
+        }
+
+        .filters button,
+        .filters .button {
+            text-align: center;
+            justify-content: center;
+        }
+
+        .check-row {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (max-width: 620px) {
+        .hero {
+            grid-template-columns: 1fr;
+            padding: 1rem;
+            gap: 0.9rem;
+        }
+
+        .hero-logo .logo-image {
+            width: min(10.5rem, 58vw);
+        }
+
+        .stat {
+            min-height: 72px;
+        }
+
+        .section-title,
+        .login-note {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .match-card {
+            border-left-width: 4px;
+        }
+
+        .group-heading {
+            flex-wrap: wrap;
+        }
+
+        .group-count {
+            margin-left: 0;
+        }
+
+        .match-topline {
+            grid-template-columns: 74px minmax(0, 1fr);
+            align-items: center;
+        }
+
+        .match-summary {
+            grid-template-columns: 1fr auto;
+            gap: 0.5rem;
+            padding: 0.62rem;
+        }
+
+        .match-expanded {
+            grid-template-columns: 1fr;
+            gap: 0.7rem;
+            padding: 0 0.78rem 0.78rem;
+        }
+
+        .date-box {
+            min-height: 74px;
+        }
+
+        .match-status {
+            justify-items: start;
+        }
+
+        .summary-side {
+            display: grid;
+            place-items: center;
+        }
+
+        .score-wrap {
+            justify-items: center;
+        }
+
+        .expand-hint {
+            justify-self: end;
+        }
+
+        .score {
+            min-height: 38px;
+            display: grid;
+            place-items: center;
+        }
+
+        .match-actions {
+            justify-items: stretch;
+        }
+
+        .favorite-form,
+        .favorite-button,
+        .prediction-form {
+            width: 100%;
+        }
+
+        .team-row {
+            font-size: 0.98rem;
+        }
+
+        .compact-scoreline {
+            gap: 0.42rem;
+        }
+
+        .compact-flag {
+            width: 2rem;
+            height: 2rem;
+        }
+
+        .compact-team .team-name {
+            font-size: 0.78rem;
+        }
+
+        .flag {
+            width: 1.75rem;
+            height: 1.75rem;
+            font-size: 1.05rem;
+        }
+
+        .detail-pill {
+            border-radius: 6px;
+        }
+
+        .favorite-button {
+            min-width: 88px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-logo logo-large">
+        {% include 'core/partials/logo_mundial.html' %}
+    </div>
+    <div class="hero-text">
+        <h1>Partidos del Mundial 2026</h1>
+        <p>Segui el fixture por grupos, guarda tus partidos favoritos y revisa sede, cancha, fecha y horario de Argentina desde el telefono.</p>
+    </div>
+</section>
+
+<section class="stats" aria-label="Resumen de partidos">
+    <div class="stat">
+        <span class="icon" aria-hidden="true"><i class="bi bi-calendar2-week"></i></span>
+        <div>
+            <strong>{{ resumen.total|default:0 }}</strong>
+            <span>partidos</span>
+        </div>
+    </div>
+    <div class="stat">
+        <span class="icon" aria-hidden="true"><i class="bi bi-calendar"></i></span>
+        <div>
+            <strong>{{ resumen.programados|default:0 }}</strong>
+            <span>programados</span>
+        </div>
+    </div>
+    <div class="stat">
+        <span class="icon danger" aria-hidden="true"><i class="bi bi-broadcast"></i></span>
+        <div>
+            <strong>{{ resumen.en_vivo|default:0 }}</strong>
+            <span>en vivo</span>
+        </div>
+    </div>
+    <div class="stat">
+        <span class="icon gold" aria-hidden="true"><i class="bi bi-check2"></i></span>
+        <div>
+            <strong>{{ resumen.finalizados|default:0 }}</strong>
+            <span>finalizados</span>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <form class="filters" method="get">
+        <div>
+            <label for="q"><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-search"></i></span>Buscar</span></label>
+            <input id="q" type="search" name="q" value="{{ filtros.q }}" placeholder="Equipo, cancha o ciudad">
+        </div>
+        <div>
+            <label for="grupo"><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-grid-3x3-gap"></i></span>Grupo</span></label>
+            <select id="grupo" name="grupo">
+                <option value="">Todos</option>
+                {% for grupo in grupos %}
+                    <option value="{{ grupo }}" {% if filtros.grupo == grupo %}selected{% endif %}>Grupo {{ grupo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="fase"><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-trophy"></i></span>Fase</span></label>
+            <select id="fase" name="fase">
+                <option value="">Todas</option>
+                {% for valor, nombre in fases %}
+                    <option value="{{ valor }}" {% if filtros.fase == valor %}selected{% endif %}>{{ nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="estado"><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-broadcast"></i></span>Estado</span></label>
+            <select id="estado" name="estado">
+                <option value="">Todos</option>
+                {% for valor, nombre in estados %}
+                    <option value="{{ valor }}" {% if filtros.estado == valor %}selected{% endif %}>{{ nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if user.is_authenticated %}
+            <label class="check-row">
+                <input type="checkbox" name="favoritos" value="1" {% if filtros.favoritos %}checked{% endif %}>
+                <span class="label-with-icon"><span class="icon gold" aria-hidden="true"><i class="bi bi-star-fill"></i></span>Ver solo favoritos</span>
+            </label>
+        {% endif %}
+        <button class="with-icon" type="submit"><span class="icon light" aria-hidden="true"><i class="bi bi-search"></i></span>Filtrar</button>
+        <a class="button secondary with-icon" href="{% url 'core:home' %}"><span class="icon" aria-hidden="true"><i class="bi bi-x-lg"></i></span>Limpiar</a>
+    </form>
+    {% if not user.is_authenticated %}
+        <div class="login-note">
+            <span>Iniciá sesión para guardar partidos como favoritos y filtrarlos después.</span>
+            <a class="button secondary with-icon" href="{% url 'core:login' %}"><span class="icon" aria-hidden="true"><i class="bi bi-box-arrow-in-right"></i></span>Ingresar</a>
+        </div>
+    {% endif %}
+</section>
+
+<div class="section-title">
+    <div>
+        <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-calendar"></i></span>Próximos partidos</span></h2>
+        <p>Cancha, ciudad y horario ARG visibles en cada tarjeta.</p>
+    </div>
+</div>
+<section class="match-list">
+    {% for partido in proximos %}
+        {% include 'core/partials/partido_card.html' with partido=partido %}
+    {% empty %}
+        <div class="empty">No hay próximos partidos cargados.</div>
+    {% endfor %}
+</section>
+
+<div class="section-title">
+    <div>
+        <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-table"></i></span>Fixture por grupos</span></h2>
+        <p>{{ partidos|length }} resultado/s con los filtros actuales.</p>
+    </div>
+</div>
+
+{% for seccion in secciones_partidos %}
+    <details class="group-block" {% if filtros.grupo or filtros.fase or filtros.q or filtros.estado or filtros.favoritos %}open{% endif %}>
+        <summary class="group-heading">
+            <span>{{ seccion.titulo }}</span>
+            {% if seccion.equipos %}
+        <span class="group-flags" aria-label="Selecciones del grupo">
+            {% for equipo in seccion.equipos %}
+                <span class="group-flag" title="{{ equipo.nombre }}">
+                    {% if equipo.bandera_url %}
+                        <img class="group-flag-img" src="{{ equipo.bandera_url }}" alt="">
+                    {% else %}
+                        {{ equipo.bandera }}
+                    {% endif %}
+                </span>
+            {% endfor %}
+        </span>
+            {% endif %}
+            <span class="group-count">{{ seccion.partidos|length }} partidos</span>
+        </summary>
+        <div class="match-list">
+            <div class="table-wrap">
+                <table class="standings">
+                    <thead>
+                        <tr>
+                            <th>Equipo</th>
+                            <th>Pts</th>
+                            <th>PJ</th>
+                            <th>PG</th>
+                            <th>PE</th>
+                            <th>PP</th>
+                            <th>GF</th>
+                            <th>GC</th>
+                            <th>DG</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in seccion.tabla %}
+                            <tr>
+                                <td>
+                                    <span class="team-cell">
+                                        <span class="mini-flag" aria-hidden="true">
+                                            {% if fila.equipo.bandera_url %}
+                                                <img class="mini-flag-img" src="{{ fila.equipo.bandera_url }}" alt="">
+                                            {% else %}
+                                                {{ fila.equipo.bandera }}
+                                            {% endif %}
+                                        </span>
+                                        <span>{{ fila.equipo.nombre }}</span>
+                                    </span>
+                                </td>
+                                <td><strong>{{ fila.pts }}</strong></td>
+                                <td>{{ fila.pj }}</td>
+                                <td>{{ fila.pg }}</td>
+                                <td>{{ fila.pe }}</td>
+                                <td>{{ fila.pp }}</td>
+                                <td>{{ fila.gf }}</td>
+                                <td>{{ fila.gc }}</td>
+                                <td>{{ fila.dg }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% for partido in seccion.partidos %}
+                {% include 'core/partials/partido_card.html' with partido=partido %}
+            {% endfor %}
+        </div>
+    </details>
+{% empty %}
+    <div class="empty">No hay partidos que coincidan con estos filtros.</div>
+{% endfor %}
+
+<script>
+    function actualizarPartidosEnVivo() {
+        fetch('{% url 'core:api_partidos_vivo' %}', {
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            data.forEach(partido => {
+                document.querySelectorAll(`[data-partido-id="${partido.id}"]`).forEach(card => {
+                    const score = card.querySelector('.score');
+                    const badge = card.querySelector('.badge');
+                    if (score) {
+                        score.textContent = partido.marcador;
+                    }
+                    if (badge) {
+                        badge.textContent = partido.estado_display;
+                        badge.className = `badge ${partido.estado}`;
+                    }
+                    card.classList.remove('programado', 'en_vivo', 'finalizado');
+                    card.classList.add(partido.estado);
+                });
+            });
+        })
+        .catch(() => {});
+    }
+
+    actualizarPartidosEnVivo();
+    setInterval(actualizarPartidosEnVivo, 60000);
+</script>
+{% endblock %}

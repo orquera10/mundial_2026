@@ -1,6 +1,6 @@
 {% with prediccion=partido.prediccion_usuario %}
 {% with local_nombre=partido.display_local_nombre|default:partido.local_nombre visitante_nombre=partido.display_visitante_nombre|default:partido.visitante_nombre local_bandera=partido.display_local_bandera|default:partido.bandera_local visitante_bandera=partido.display_visitante_bandera|default:partido.bandera_visitante local_bandera_url=partido.display_local_bandera_url|default:partido.bandera_local_url visitante_bandera_url=partido.display_visitante_bandera_url|default:partido.bandera_visitante_url %}
-<details class="match-card {{ partido.estado }}" data-partido-id="{{ partido.id }}" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }};">
+<details class="match-card {{ partido.estado }}" data-partido-id="{{ partido.id }}" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }}; --team-local-third: {{ partido.color_local_terciario }}; --team-visitor-third: {{ partido.color_visitante_terciario }};">
     <summary class="match-summary">
         <div class="compact-meta">
             <span><i class="bi bi-hash" aria-hidden="true"></i>{{ partido.numero }}</span>
@@ -51,6 +51,9 @@
         </div>
 
         <div class="summary-side">
+            <a class="summary-details-link" href="{% url 'core:partido_detalle' partido.id %}" onclick="event.stopPropagation();" aria-label="Ir al detalle del partido {{ partido.numero }}" title="Detalle del partido">
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
             <span class="expand-hint" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
         </div>
     </summary>

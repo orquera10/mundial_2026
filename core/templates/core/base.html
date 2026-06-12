@@ -430,6 +430,7 @@
                 <a href="{% url 'core:predicciones' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-bullseye"></i></span>Predicciones</a>
                 <a href="{% url 'core:almanaque' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-calendar-week"></i></span>Almanaque</a>
                 <a href="{% url 'core:paises' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-flag"></i></span>Paises</a>
+                <a href="{% url 'core:estadios' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-building"></i></span>Estadios</a>
             {% if user.is_authenticated %}
                 <div class="profile-pill">
                     <span class="profile-icon" aria-hidden="true">{{ user.username|first|upper }}</span>

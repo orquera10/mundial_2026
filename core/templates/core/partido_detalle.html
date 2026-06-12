@@ -11,7 +11,7 @@
         border-radius: 8px;
         color: var(--ink);
         background:
-            linear-gradient(135deg, color-mix(in srgb, var(--team-local, var(--blue)) 12%, #fff), color-mix(in srgb, var(--team-visitor, var(--brand)) 10%, #fff) 42%, #fff 74%),
+            linear-gradient(135deg, color-mix(in srgb, var(--team-local, var(--blue)) 12%, #fff), color-mix(in srgb, var(--team-local-third, #fff) 8%, #fff) 28%, color-mix(in srgb, var(--team-visitor, var(--brand)) 10%, #fff) 58%, color-mix(in srgb, var(--team-visitor-third, #fff) 7%, #fff) 82%),
             #fff;
         border: 1px solid var(--line);
         border-left: 5px solid var(--team-local, var(--blue));
@@ -358,8 +358,8 @@
 {% endblock %}
 
 {% block content %}
-<section class="detail-hero" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }};">
-    <a class="back-link" href="{% url 'core:home' %}"><i class="bi bi-chevron-left" aria-hidden="true"></i>Volver</a>
+<section class="detail-hero" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }}; --team-local-third: {{ partido.color_local_terciario }}; --team-visitor-third: {{ partido.color_visitante_terciario }};">
+    <a class="back-link" href="{{ volver_url }}"><i class="bi bi-chevron-left" aria-hidden="true"></i>Volver</a>
     <div class="detail-kicker">
         <span><i class="bi bi-hash" aria-hidden="true"></i> Partido {{ partido.numero }}</span>
         <span>{{ partido.get_fase_display }}{% if partido.grupo %} - Grupo {{ partido.grupo }}{% endif %}</span>
@@ -398,7 +398,7 @@
     </div>
 </section>
 
-<div class="detail-grid" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }};">
+<div class="detail-grid" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }}; --team-local-third: {{ partido.color_local_terciario }}; --team-visitor-third: {{ partido.color_visitante_terciario }};">
     <section class="panel detail-section">
         <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-info-circle"></i></span>Informacion</span></h2>
         <div class="info-list">

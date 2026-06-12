@@ -5,16 +5,42 @@ from .models import Equipo, JugadorSeleccion, Partido, PartidoFavorito, Predicci
 
 @admin.register(Equipo)
 class EquipoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'grupo', 'codigo_fifa', 'tecnico')
+    list_display = ('nombre', 'grupo', 'codigo_fifa', 'tecnico', 'tecnico_nacionalidad')
     list_filter = ('grupo',)
-    search_fields = ('nombre', 'codigo_fifa', 'tecnico')
+    search_fields = (
+        'nombre',
+        'codigo_fifa',
+        'tecnico',
+        'tecnico_nombre_tabla',
+        'tecnico_nombres',
+        'tecnico_apellidos',
+        'tecnico_nacionalidad',
+    )
 
 
 @admin.register(JugadorSeleccion)
 class JugadorSeleccionAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'equipo', 'posicion', 'club', 'internacionalidades', 'goles')
+    list_display = (
+        'orden',
+        'nombre',
+        'equipo',
+        'posicion',
+        'camiseta',
+        'club',
+        'internacionalidades',
+        'goles',
+    )
     list_filter = ('equipo', 'posicion')
-    search_fields = ('nombre', 'camiseta', 'club', 'equipo__nombre')
+    search_fields = (
+        'nombre',
+        'nombre_tabla',
+        'nombres',
+        'apellidos',
+        'camiseta',
+        'nombre_camiseta',
+        'club',
+        'equipo__nombre',
+    )
 
 
 @admin.register(Partido)

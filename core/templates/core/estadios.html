@@ -1,0 +1,311 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Estadios | Mundial 2026{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stadiums-hero {
+        display: grid;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        color: #fff;
+        background: linear-gradient(135deg, var(--blue), var(--brand) 56%, var(--accent));
+        border-bottom: 4px solid var(--gold);
+        box-shadow: 0 16px 34px rgba(23, 32, 51, 0.14);
+    }
+
+    .stadiums-hero h1 {
+        margin: 0;
+        color: #fff;
+        font-size: clamp(2rem, 9vw, 3.2rem);
+        line-height: 0.98;
+    }
+
+    .stadiums-hero p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.35;
+    }
+
+    .stadiums-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .stadiums-pill,
+    .source-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        width: fit-content;
+        padding: 0.38rem 0.55rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 900;
+        text-decoration: none;
+    }
+
+    .source-link:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .stadiums-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+        gap: 0.7rem;
+    }
+
+    .stadium-card {
+        display: grid;
+        gap: 0.7rem;
+        min-width: 0;
+        padding: 0.78rem;
+        border: 1px solid #d8dee9;
+        border-left: 5px solid var(--blue);
+        border-radius: 8px;
+        background: linear-gradient(135deg, #fff, #f6faff 56%, #fff8e1);
+        box-shadow: 0 12px 26px rgba(23, 32, 51, 0.08);
+        color: inherit;
+        text-decoration: none;
+        transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .stadium-card:hover {
+        transform: translateY(-1px);
+        border-color: #b7c9de;
+        box-shadow: 0 16px 30px rgba(23, 32, 51, 0.11);
+    }
+
+    .stadium-top {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.65rem;
+        align-items: center;
+    }
+
+    .stadium-photo {
+        position: relative;
+        overflow: hidden;
+        height: 7rem;
+        margin: -0.78rem -0.78rem 0;
+        border-radius: 8px 8px 0 0;
+        background: linear-gradient(135deg, #eef5ff, #fff8e1);
+    }
+
+    .stadium-photo img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+    }
+
+    .stadium-photo-fallback {
+        height: 100%;
+        display: grid;
+        place-items: center;
+        color: var(--blue);
+    }
+
+    .stadium-icon {
+        width: 2.75rem;
+        height: 2.75rem;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 50%;
+        background: #eef5ff;
+        color: var(--blue);
+        border: 1px solid #d5e5f7;
+    }
+
+    .stadium-glyph {
+        position: relative;
+        width: 1.65rem;
+        height: 1.15rem;
+        display: inline-block;
+        border: 0.14rem solid currentColor;
+        border-radius: 0.35rem;
+    }
+
+    .stadium-glyph::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 0.12rem;
+        background: currentColor;
+        transform: translateX(-50%);
+        opacity: 0.7;
+    }
+
+    .stadium-glyph::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 0.42rem;
+        height: 0.42rem;
+        border: 0.1rem solid currentColor;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        background: #eef5ff;
+    }
+
+    .stadium-title {
+        min-width: 0;
+        display: grid;
+        gap: 0.18rem;
+    }
+
+    .stadium-title h2 {
+        margin: 0;
+        font-size: 1rem;
+        line-height: 1.08;
+    }
+
+    .stadium-title small {
+        color: var(--muted);
+        font-weight: 850;
+    }
+
+    .stadium-facts {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+    }
+
+    .stadium-fact {
+        display: grid;
+        gap: 0.12rem;
+        padding: 0.55rem;
+        border: 1px solid #dfe7f1;
+        border-radius: 8px;
+        background: #fff;
+        min-width: 0;
+    }
+
+    .stadium-fact strong {
+        color: var(--muted);
+        font-size: 0.68rem;
+        text-transform: uppercase;
+    }
+
+    .stadium-fact span {
+        overflow: hidden;
+        color: var(--ink);
+        font-size: 0.84rem;
+        font-weight: 900;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .stadium-detail {
+        margin: 0;
+        color: #40516a;
+        font-size: 0.84rem;
+        font-weight: 750;
+        line-height: 1.35;
+    }
+
+    .stadium-open {
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.4rem;
+        padding-top: 0.15rem;
+        color: var(--blue);
+        font-size: 0.82rem;
+        font-weight: 900;
+    }
+
+    .stadium-matches {
+        display: grid;
+        gap: 0.42rem;
+    }
+
+    .stadium-matches h3 {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.74rem;
+        text-transform: uppercase;
+    }
+
+    .stadium-match {
+        display: grid;
+        gap: 0.18rem;
+        padding: 0.52rem;
+        border-radius: 8px;
+        background: #fff;
+        border: 1px solid #dfe7f1;
+        color: inherit;
+        text-decoration: none;
+        font-weight: 850;
+    }
+
+    .stadium-match:hover {
+        border-color: #b7c9de;
+    }
+
+    .stadium-match small {
+        color: var(--muted);
+        font-weight: 800;
+    }
+
+    @media (max-width: 520px) {
+        .stadiums-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stadium-facts {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="stadiums-hero">
+    <div class="stadiums-meta">
+        <span class="stadiums-pill"><i class="bi bi-building" aria-hidden="true"></i>{{ total_estadios }} estadios</span>
+        <a class="source-link" href="{{ fuente_fifa_url }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>Fuente FIFA</a>
+    </div>
+    <h1>Estadios</h1>
+    <p>Sedes oficiales del Mundial 2026 en Canada, Mexico y Estados Unidos, con los partidos cargados en el fixture de la app.</p>
+</section>
+
+<section class="stadiums-grid" aria-label="Listado de estadios">
+    {% for estadio in estadios %}
+        <a class="stadium-card" id="{{ estadio.slug }}" href="{% url 'core:estadio_detalle' estadio.slug %}" aria-label="Ver estadio {{ estadio.estadio }}">
+            <div class="stadium-photo">
+                {% if estadio.imagen %}
+                    <img src="{% static estadio.imagen %}" alt="{{ estadio.estadio }}">
+                {% else %}
+                    <span class="stadium-photo-fallback" aria-hidden="true"><span class="stadium-glyph"></span></span>
+                {% endif %}
+            </div>
+            <div class="stadium-top">
+                <span class="stadium-icon" aria-hidden="true"><span class="stadium-glyph"></span></span>
+                <span class="stadium-title">
+                    <h2>{{ estadio.estadio }}</h2>
+                    <small>{{ estadio.nombre_habitual }}</small>
+                </span>
+            </div>
+
+            <div class="stadium-facts">
+                <span class="stadium-fact"><strong>Ciudad</strong><span>{{ estadio.ciudad }}</span></span>
+                <span class="stadium-fact"><strong>Pais</strong><span>{{ estadio.pais }}</span></span>
+                <span class="stadium-fact"><strong>Capacidad</strong><span>{{ estadio.capacidad }}</span></span>
+                <span class="stadium-fact"><strong>Partidos</strong><span>{{ estadio.partidos_count }}</span></span>
+            </div>
+
+            <span class="stadium-open">Ver ficha <i class="bi bi-chevron-right" aria-hidden="true"></i></span>
+        </a>
+    {% endfor %}
+</section>
+{% endblock %}

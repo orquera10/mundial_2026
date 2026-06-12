@@ -485,7 +485,26 @@
 
     .summary-side {
         display: grid;
+        gap: 0.35rem;
         place-items: center;
+    }
+
+    .summary-details-link {
+        width: 1.8rem;
+        height: 1.8rem;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 50%;
+        background: #fff;
+        border: 1px solid #d8dee9;
+        color: var(--blue);
+        text-decoration: none;
+        box-shadow: 0 8px 16px rgba(23, 32, 51, 0.08);
+    }
+
+    .summary-details-link:hover {
+        border-color: #b7c9de;
+        background: #f6faff;
     }
 
     .compact-meta {

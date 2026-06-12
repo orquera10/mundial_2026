@@ -1,0 +1,283 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ estadio.estadio }} | Mundial 2026{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stadium-back {
+        width: 2.6rem;
+        height: 2.6rem;
+        display: inline-grid;
+        place-items: center;
+        margin-bottom: 0.6rem;
+        padding: 0;
+        border-radius: 50%;
+        box-shadow: 0 10px 22px rgba(23, 32, 51, 0.08);
+    }
+
+    .stadium-back .icon {
+        margin: 0;
+    }
+
+    .stadium-hero {
+        display: grid;
+        gap: 0.85rem;
+        padding: 1rem;
+        border: 1px solid var(--line);
+        border-left: 5px solid var(--blue);
+        border-bottom: 4px solid var(--gold);
+        border-radius: 8px;
+        background: linear-gradient(135deg, #fff, #f4f9ff 50%, #fff8e1);
+        box-shadow: 0 14px 32px rgba(23, 32, 51, 0.08);
+    }
+
+    .stadium-hero-photo {
+        overflow: hidden;
+        height: clamp(11rem, 42vw, 19rem);
+        margin: -1rem -1rem 0;
+        border-radius: 8px 8px 0 0;
+        background: linear-gradient(135deg, #eef5ff, #fff8e1);
+    }
+
+    .stadium-hero-photo img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+    }
+
+    .stadium-hero-photo-fallback {
+        height: 100%;
+        display: grid;
+        place-items: center;
+        color: var(--blue);
+    }
+
+    .stadium-heading {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.8rem;
+        align-items: center;
+    }
+
+    .stadium-icon-large {
+        width: 3.6rem;
+        height: 3.6rem;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 50%;
+        background: #eef5ff;
+        color: var(--blue);
+        border: 1px solid #d5e5f7;
+    }
+
+    .stadium-glyph {
+        position: relative;
+        width: 1.9rem;
+        height: 1.32rem;
+        display: inline-block;
+        border: 0.16rem solid currentColor;
+        border-radius: 0.38rem;
+    }
+
+    .stadium-glyph::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 0.13rem;
+        background: currentColor;
+        transform: translateX(-50%);
+        opacity: 0.7;
+    }
+
+    .stadium-glyph::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 0.48rem;
+        height: 0.48rem;
+        border: 0.11rem solid currentColor;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        background: #eef5ff;
+    }
+
+    .stadium-hero h1 {
+        margin: 0 0 0.25rem;
+        font-size: clamp(1.75rem, 8vw, 2.65rem);
+        line-height: 1.04;
+    }
+
+    .stadium-hero small {
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 900;
+    }
+
+    .stadium-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .wide-section {
+        grid-column: 1 / -1;
+    }
+
+    .stadium-section {
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .facts-grid {
+        display: grid;
+        gap: 0.55rem;
+    }
+
+    .fact-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.55rem;
+        padding: 0.7rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .fact-row strong {
+        display: block;
+        color: var(--muted);
+        font-size: 0.76rem;
+    }
+
+    .text-block {
+        display: grid;
+        gap: 0.65rem;
+        color: #40516a;
+        font-size: 0.9rem;
+        line-height: 1.45;
+    }
+
+    .text-block p {
+        margin: 0;
+    }
+
+    .match-list {
+        display: grid;
+        gap: 0.55rem;
+    }
+
+    .stadium-match {
+        display: grid;
+        gap: 0.2rem;
+        padding: 0.62rem;
+        border: 1px solid #dfe7f1;
+        border-radius: 8px;
+        background: #fff;
+        color: inherit;
+        text-decoration: none;
+        font-weight: 850;
+    }
+
+    .stadium-match:hover {
+        border-color: #b7c9de;
+    }
+
+    .stadium-match small {
+        color: var(--muted);
+        font-weight: 800;
+    }
+
+    .source-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        width: fit-content;
+        color: var(--blue);
+        font-size: 0.8rem;
+        font-weight: 900;
+        text-decoration: none;
+    }
+
+    @media (max-width: 760px) {
+        main {
+            width: min(100% - 1rem, 720px);
+        }
+
+        .stadium-grid,
+        .stadium-heading {
+            grid-template-columns: 1fr;
+        }
+
+        .stadium-icon-large {
+            width: 3.1rem;
+            height: 3.1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="button secondary stadium-back" href="{{ volver_url }}" aria-label="Volver"><span class="icon" aria-hidden="true"><i class="bi bi-chevron-left"></i></span></a>
+
+<section class="stadium-hero">
+    <div class="stadium-hero-photo">
+        {% if estadio.imagen %}
+            <img src="{% static estadio.imagen %}" alt="{{ estadio.estadio }}">
+        {% else %}
+            <span class="stadium-hero-photo-fallback" aria-hidden="true"><span class="stadium-glyph"></span></span>
+        {% endif %}
+    </div>
+    <div class="stadium-heading">
+        <span class="stadium-icon-large" aria-hidden="true"><span class="stadium-glyph"></span></span>
+        <div>
+            <h1>{{ estadio.estadio }}</h1>
+            <small>{{ estadio.nombre_habitual }} · {{ estadio.titulo_fifa }}</small>
+        </div>
+    </div>
+    <a class="source-note" href="{{ fuente_fifa_url }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>Datos desde archivo FIFA en /data</a>
+</section>
+
+<div class="stadium-grid">
+    <section class="panel stadium-section">
+        <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-info-circle"></i></span>Ficha</span></h2>
+        <div class="facts-grid">
+            <div class="fact-row"><span class="icon" aria-hidden="true"><i class="bi bi-geo-alt"></i></span><span><strong>Ubicacion</strong>{{ estadio.ubicacion }}</span></div>
+            <div class="fact-row"><span class="icon" aria-hidden="true"><i class="bi bi-people"></i></span><span><strong>Capacidad</strong>{{ estadio.capacidad }}</span></div>
+            <div class="fact-row"><span class="icon" aria-hidden="true"><i class="bi bi-calendar-event"></i></span><span><strong>Inauguracion</strong>{{ estadio.inauguracion }}</span></div>
+            <div class="fact-row"><span class="icon" aria-hidden="true"><i class="bi bi-trophy"></i></span><span><strong>Partidos cargados</strong>{{ estadio.partidos_count }}</span></div>
+        </div>
+    </section>
+
+    <section class="panel stadium-section">
+        <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-card-text"></i></span>Resumen</span></h2>
+        <div class="text-block">
+            {% for parrafo in estadio.descripcion %}
+                <p>{{ parrafo }}</p>
+            {% empty %}
+                <p>Informacion descriptiva a confirmar.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel stadium-section wide-section">
+        <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-calendar2-week"></i></span>Partidos en la app</span></h2>
+        <div class="match-list">
+            {% for partido in estadio.partidos %}
+                <a class="stadium-match" href="{% url 'core:partido_detalle' partido.id %}">
+                    <span>Partido {{ partido.numero }} · {{ partido.local_nombre }} vs {{ partido.visitante_nombre }}</span>
+                    <small>{{ partido.fecha_argentina|date:"d/m/Y" }} · {{ partido.horario_argentina }} · {{ partido.get_fase_display }}</small>
+                </a>
+            {% empty %}
+                <span class="stadium-match"><span>No hay partidos cargados para esta sede.</span></span>
+            {% endfor %}
+        </div>
+    </section>
+
+</div>
+{% endblock %}

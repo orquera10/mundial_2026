@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 
 from .api_integration import sync_match_result
-from .models import Equipo, EquipoFavorito, Partido, PartidoFavorito, Prediccion
+from .models import Equipo, EquipoFavorito, JugadorSeleccion, Partido, PartidoFavorito, Prediccion
 
 
 class MundialHomeTests(TestCase):
@@ -29,6 +29,8 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, '<details class="match-card', html=False)
         self.assertContains(response, 'match-summary')
         self.assertContains(response, 'match-expanded')
+        self.assertContains(response, 'summary-details-link')
+        self.assertContains(response, 'Ir al detalle del partido')
         self.assertContains(response, 'Mas detalles')
 
     def test_tarjetas_usan_colores_de_las_selecciones(self):
@@ -36,11 +38,17 @@ class MundialHomeTests(TestCase):
 
         self.assertEqual(partido.color_local, '#006847')
         self.assertEqual(partido.color_visitante, '#007a4d')
+        self.assertEqual(partido.color_local_secundario, '#ffffff')
+        self.assertEqual(partido.color_local_terciario, '#ce1126')
+        self.assertEqual(partido.color_visitante_secundario, '#ffb612')
+        self.assertEqual(partido.color_visitante_terciario, '#de3831')
 
         response = self.client.get('/')
 
         self.assertContains(response, '--team-local: #006847')
         self.assertContains(response, '--team-visitor: #007a4d')
+        self.assertContains(response, '--team-local-third: #ce1126')
+        self.assertContains(response, '--team-visitor-third: #de3831')
 
     def test_nombres_de_selecciones_linkean_a_su_pagina(self):
         mexico = Equipo.objects.get(nombre='Mexico')
@@ -57,10 +65,14 @@ class MundialHomeTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Mexico')
+        self.assertContains(response, 'href="/paises/"')
+        self.assertContains(response, 'aria-label="Volver"')
+        self.assertContains(response, 'background: #ce1126')
         self.assertContains(response, 'CONCACAF')
         self.assertContains(response, 'Javier Aguirre')
         self.assertContains(response, 'Raul Rangel')
-        self.assertContains(response, 'CD Guadalajara')
+        self.assertContains(response, 'Rangel')
+        self.assertContains(response, 'Partidos')
         self.assertContains(response, 'squad-shirt')
         self.assertContains(response, 'Camiseta 1')
         self.assertContains(response, 'class="portero"')
@@ -75,11 +87,46 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'mini-flag')
         self.assertContains(response, 'match-expanded')
 
+    def test_botones_volver_respetan_pagina_de_origen(self):
+        mexico = Equipo.objects.get(nombre='Mexico')
+        partido = Partido.objects.get(numero=1)
+
+        response = self.client.get(
+            f'/selecciones/{mexico.id}/',
+            HTTP_REFERER='http://testserver/paises/?q=mex',
+        )
+        self.assertContains(response, 'href="http://testserver/paises/?q=mex"')
+
+        response = self.client.get(
+            f'/partidos/{partido.id}/',
+            HTTP_REFERER='http://testserver/almanaque/?grupo=A',
+        )
+        self.assertContains(response, 'href="http://testserver/almanaque/?grupo=A"')
+
+        response = self.client.get(
+            f'/partidos/{partido.id}/',
+            HTTP_REFERER='http://testserver/predicciones/?vista=final',
+        )
+        self.assertContains(response, 'href="http://testserver/predicciones/?vista=final"')
+
+        response = self.client.get(
+            f'/selecciones/{mexico.id}/',
+            HTTP_REFERER=f'http://testserver/partidos/{partido.id}/',
+        )
+        self.assertContains(response, f'href="http://testserver/partidos/{partido.id}/"')
+
+        response = self.client.get(
+            '/estadios/mexico-city-stadium/',
+            HTTP_REFERER='http://testserver/partidos/1/',
+        )
+        self.assertContains(response, 'href="/estadios/"')
+
     def test_nombre_de_camiseta_no_arrastra_apellido_pegado(self):
         argentina = Equipo.objects.get(nombre='Argentina')
 
         response = self.client.get(f'/selecciones/{argentina.id}/')
 
+        self.assertContains(response, 'argentina-shirt')
         self.assertContains(response, 'Enzo Fernandez')
         self.assertContains(response, 'E. Fernandez')
         self.assertNotContains(response, 'Ndeze. Fernandez')
@@ -88,6 +135,32 @@ class MundialHomeTests(TestCase):
         self.assertNotContains(response, 'Camiseta 6 Nez')
         self.assertContains(response, 'Nico Paz')
         self.assertNotContains(response, 'Neznico Paz')
+
+    def test_importa_columnas_completas_del_pdf_fifa(self):
+        cristiano = JugadorSeleccion.objects.get(equipo__nombre='Portugal', nombre='Cristiano Ronaldo')
+        enzo = JugadorSeleccion.objects.get(equipo__nombre='Argentina', nombre='Enzo Fernandez')
+        lisandro = JugadorSeleccion.objects.get(equipo__nombre='Argentina', nombre='Lisandro Martinez')
+        portugal = Equipo.objects.get(nombre='Portugal')
+
+        self.assertEqual(JugadorSeleccion.objects.count(), 1248)
+        self.assertEqual(cristiano.nombre_tabla, 'CRISTIANO RONALDO')
+        self.assertEqual(cristiano.nombres, 'Cristiano Ronaldo')
+        self.assertEqual(cristiano.apellidos, 'Dos Santos Aveiro')
+        self.assertEqual(cristiano.camiseta, 'Ronaldo')
+        self.assertEqual(cristiano.nombre_camiseta, 'RONALDO')
+        self.assertEqual(cristiano.club, 'Al Nassr FC (KSA)')
+        self.assertEqual(cristiano.altura_cm, 185)
+        self.assertEqual(cristiano.internacionalidades, 228)
+        self.assertEqual(cristiano.goles, 143)
+        self.assertEqual(enzo.nombre_tabla, 'FERNANDEZ Enzo')
+        self.assertEqual(enzo.nombres, 'Enzo Jeremías')
+        self.assertEqual(enzo.apellidos, 'Fernández')
+        self.assertEqual(enzo.nombre_camiseta, 'E. FERNANDEZ')
+        self.assertEqual(lisandro.apellidos, 'Martínez')
+        self.assertEqual(lisandro.nombre_camiseta, 'MARTÍNEZ')
+        self.assertEqual(portugal.tecnico_nombres, 'Roberto')
+        self.assertEqual(portugal.tecnico_apellidos, 'Martínez Montoliu')
+        self.assertEqual(portugal.tecnico_nacionalidad, 'Spain')
 
     def test_menu_y_pagina_paises_listan_selecciones(self):
         response = self.client.get('/')
@@ -101,6 +174,48 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'Mexico')
         self.assertContains(response, 'Argentina')
         self.assertContains(response, 'aria-label="Ver seleccion Mexico"')
+
+    def test_menu_y_pagina_estadios_listan_sedes(self):
+        response = self.client.get('/')
+        self.assertContains(response, 'Estadios')
+        self.assertContains(response, '/estadios/')
+
+        response = self.client.get('/estadios/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Estadios')
+        self.assertContains(response, 'Fuente FIFA')
+        self.assertContains(response, 'Mexico City Stadium')
+        self.assertContains(response, 'Estadio Azteca')
+        self.assertContains(response, 'New York New Jersey Stadium')
+        self.assertContains(response, 'MetLife Stadium')
+        self.assertContains(response, '16 estadios')
+        self.assertContains(response, 'href="/estadios/mexico-city-stadium/"')
+        self.assertContains(response, 'aria-label="Ver estadio Mexico City Stadium"')
+        self.assertContains(response, 'core/img/stadiums/mexico-city-stadium.jpeg')
+        self.assertContains(response, 'stadium-glyph')
+
+    def test_pagina_detalle_estadio_muestra_data_del_word(self):
+        response = self.client.get('/estadios/mexico-city-stadium/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Mexico City Stadium')
+        self.assertContains(response, 'Estadio Azteca')
+        self.assertContains(response, 'core/img/stadiums/mexico-city-stadium.jpeg')
+        self.assertContains(response, 'stadium-glyph')
+        self.assertContains(response, '80.824')
+        self.assertContains(response, '1966')
+        self.assertContains(response, 'Partido 1')
+        self.assertNotContains(response, 'Fixture FIFA del documento')
+        self.assertContains(response, 'Un verdadero coliseo del fútbol mundial')
+        self.assertNotContains(response, 'Partido 24 – Uzbekistán')
+
+    def test_estadio_filadelfia_usa_imagen_agregada(self):
+        response = self.client.get('/estadios/philadelphia-stadium/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Philadelphia Stadium')
+        self.assertContains(response, 'core/img/stadiums/filadelfia_stadium.jpg')
 
     def test_usuario_puede_marcar_pais_favorito(self):
         usuario = User.objects.create_user(username='paises', password='clave-segura-123')

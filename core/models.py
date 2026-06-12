@@ -130,57 +130,57 @@ FLAG_CODES = {
 }
 
 TEAM_COLORS = {
-    'Algeria': ('#006233', '#d21034'),
-    'Argentina': ('#75aadb', '#f6b40e'),
-    'Australia': ('#00843d', '#ffcd00'),
-    'Austria': ('#ed2939', '#ffffff'),
-    'Belgium': ('#fae042', '#ed2939'),
-    'Bosnia and Herzegovina': ('#002f6c', '#fcd116'),
-    'Brazil': ('#009c3b', '#ffdf00'),
-    'Cabo Verde': ('#003893', '#cf2027'),
-    'Canada': ('#d52b1e', '#ffffff'),
-    'Colombia': ('#fcd116', '#003893'),
-    'Congo DR': ('#007fff', '#f7d618'),
-    "Cote d'Ivoire": ('#f77f00', '#009e60'),
-    'Croatia': ('#ff0000', '#171796'),
-    'Curacao': ('#002b7f', '#f9e814'),
-    'Czechia': ('#d7141a', '#11457e'),
-    'Ecuador': ('#ffdd00', '#034ea2'),
-    'Egypt': ('#ce1126', '#000000'),
-    'England': ('#cf142b', '#ffffff'),
-    'France': ('#0055a4', '#ef4135'),
-    'Germany': ('#dd0000', '#ffce00'),
-    'Ghana': ('#006b3f', '#fcd116'),
-    'Haiti': ('#00209f', '#d21034'),
-    'IR Iran': ('#239f40', '#da0000'),
-    'Iraq': ('#ce1126', '#000000'),
-    'Japan': ('#bc002d', '#ffffff'),
-    'Jordan': ('#ce1126', '#007a3d'),
-    'Korea Republic': ('#c60c30', '#003478'),
-    'Mexico': ('#006847', '#ce1126'),
-    'Morocco': ('#c1272d', '#006233'),
-    'Netherlands': ('#ff4f00', '#21468b'),
-    'New Zealand': ('#00247d', '#cc142b'),
-    'Norway': ('#ba0c2f', '#00205b'),
-    'Panama': ('#005293', '#d21034'),
-    'Paraguay': ('#0038a8', '#d52b1e'),
-    'Portugal': ('#006600', '#ff0000'),
-    'Qatar': ('#8a1538', '#ffffff'),
-    'Saudi Arabia': ('#006c35', '#ffffff'),
-    'Scotland': ('#005eb8', '#ffffff'),
-    'Senegal': ('#00853f', '#fdef42'),
-    'South Africa': ('#007a4d', '#ffb612'),
-    'Spain': ('#aa151b', '#f1bf00'),
-    'Sweden': ('#006aa7', '#fecc00'),
-    'Switzerland': ('#d52b1e', '#ffffff'),
-    'Tunisia': ('#e70013', '#ffffff'),
-    'Turkiye': ('#e30a17', '#ffffff'),
-    'Uruguay': ('#0038a8', '#fcd116'),
-    'USA': ('#3c3b6e', '#b22234'),
-    'Uzbekistan': ('#1eb6e7', '#009b3a'),
+    'Algeria': ('#006233', '#ffffff', '#d21034'),
+    'Argentina': ('#4b9ae4', '#ffffff', '#f6b40e'),
+    'Australia': ( '#ffcd00','#00843d', '#ffffff'),
+    'Austria': ('#ed2939', '#ffffff', '#c8102e'),
+    'Belgium': ('#ed2939','#fae042',  '#000000'),
+    'Bosnia and Herzegovina': ('#002f6c', '#fcd116', '#ffffff'),
+    'Brazil': ( '#ffdf00', '#009c3b','#002776'),
+    'Cabo Verde': ('#003893', '#ffffff', '#cf2027'),
+    'Canada': ('#d52b1e', '#ffffff', '#a6192e'),
+    'Colombia': ('#fcd116', '#003893', '#ce1126'),
+    'Congo DR': ('#007fff', '#f7d618', '#ce1021'),
+    "Cote d'Ivoire": ('#f77f00', '#ffffff', '#009e60'),
+    'Croatia': ('#ff0000', '#ffffff', '#171796'),
+    'Curacao': ('#002b7f', '#f9e814', '#ffffff'),
+    'Czechia': ('#d7141a', '#ffffff', '#11457e'),
+    'Ecuador': ('#ffdd00', '#034ea2', '#ed1c24'),
+    'Egypt': ('#ce1126', '#ffffff', '#000000'),
+    'England': ('#ffffff','#cf142b',  '#003087'),
+    'France': ("#011e3a", '#ffffff', '#ef4135'),
+    'Germany': ('#000000', '#dd0000', '#ffce00'),
+    'Ghana': ('#006b3f', '#fcd116', '#ce1126'),
+    'Haiti': ('#00209f', '#d21034', '#ffffff'),
+    'IR Iran': ('#239f40', '#ffffff', '#da0000'),
+    'Iraq': ('#ce1126', '#ffffff', '#000000'),
+    'Japan': ('#ffffff','#bc002d',  '#1f2937'),
+    'Jordan': ('#ce1126', '#ffffff', '#007a3d'),
+    'Korea Republic': ('#c60c30', '#ffffff', '#003478'),
+    'Mexico': ('#006847', '#ffffff', '#ce1126'),
+    'Morocco': ('#c1272d', '#006233', '#ffffff'),
+    'Netherlands': ('#ff4f00', '#ffffff', '#21468b'),
+    'New Zealand': ('#00247d', '#ffffff', '#cc142b'),
+    'Norway': ('#ba0c2f', '#ffffff', '#00205b'),
+    'Panama': ('#005293', '#ffffff', '#d21034'),
+    'Paraguay': ('#d52b1e','#0038a8',  '#ffffff'),
+    'Portugal': ('#ff0000', '#006600', '#ffcc00'),
+    'Qatar': ('#8a1538', '#ffffff', '#5f0f2f'),
+    'Saudi Arabia': ('#006c35', '#ffffff', '#d7f3df'),
+    'Scotland': ('#005eb8', '#ffffff', '#003f7f'),
+    'Senegal': ('#00853f', '#fdef42', '#e31b23'),
+    'South Africa': ('#007a4d', '#ffb612', '#de3831'),
+    'Spain': ('#aa151b', '#f1bf00', '#ffffff'),
+    'Sweden': ('#006aa7', '#fecc00', '#ffffff'),
+    'Switzerland': ('#d52b1e', '#ffffff', '#b00020'),
+    'Tunisia': ('#e70013', '#ffffff', '#c40010'),
+    'Turkiye': ('#e30a17', '#ffffff', '#b80012'),
+    'Uruguay': ("#5181e0", '#ffffff', '#fcd116'),
+    'USA': ('#3c3b6e', '#ffffff', '#b22234'),
+    'Uzbekistan': ('#1eb6e7', '#ffffff', '#009b3a'),
 }
 
-DEFAULT_TEAM_COLORS = ('#004b8d', '#007852')
+DEFAULT_TEAM_COLORS = ('#004b8d', '#ffffff', '#007852')
 
 
 def bandera_url(nombre):
@@ -199,6 +199,10 @@ class Equipo(models.Model):
     grupo = models.CharField(max_length=1, blank=True)
     codigo_fifa = models.CharField(max_length=6, blank=True)
     tecnico = models.CharField(max_length=120, blank=True)
+    tecnico_nombre_tabla = models.CharField(max_length=120, blank=True)
+    tecnico_nombres = models.CharField(max_length=120, blank=True)
+    tecnico_apellidos = models.CharField(max_length=140, blank=True)
+    tecnico_nacionalidad = models.CharField(max_length=80, blank=True)
 
     class Meta:
         ordering = ['grupo', 'nombre']
@@ -222,11 +226,19 @@ class Equipo(models.Model):
     def color_secundario(self):
         return colores_equipo(self.nombre)[1]
 
+    @property
+    def color_terciario(self):
+        return colores_equipo(self.nombre)[2]
+
 
 class JugadorSeleccion(models.Model):
     equipo = models.ForeignKey(Equipo, on_delete=models.CASCADE, related_name='jugadores')
     orden = models.PositiveSmallIntegerField()
     nombre = models.CharField(max_length=120)
+    nombre_tabla = models.CharField(max_length=120, blank=True)
+    nombres = models.CharField(max_length=140, blank=True)
+    apellidos = models.CharField(max_length=160, blank=True)
+    nombre_camiseta = models.CharField(max_length=80, blank=True)
     camiseta = models.CharField(max_length=80, blank=True)
     posicion = models.CharField(max_length=40)
     fecha_nacimiento = models.CharField(max_length=12, blank=True)
@@ -243,6 +255,20 @@ class JugadorSeleccion(models.Model):
 
     def __str__(self):
         return f'{self.nombre} ({self.equipo})'
+
+    @property
+    def edad(self):
+        if not self.fecha_nacimiento:
+            return None
+        try:
+            dia, mes, anio = [int(parte) for parte in self.fecha_nacimiento.split('/')]
+        except (TypeError, ValueError):
+            return None
+        hoy = timezone.localdate()
+        edad = hoy.year - anio
+        if (hoy.month, hoy.day) < (mes, dia):
+            edad -= 1
+        return edad
 
 
 class Partido(models.Model):
@@ -357,6 +383,14 @@ class Partido(models.Model):
     @property
     def color_visitante_secundario(self):
         return colores_equipo(self.visitante_nombre)[1]
+
+    @property
+    def color_local_terciario(self):
+        return colores_equipo(self.local_nombre)[2]
+
+    @property
+    def color_visitante_terciario(self):
+        return colores_equipo(self.visitante_nombre)[2]
 
     @property
     def horario(self):

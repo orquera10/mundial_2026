@@ -2,11 +2,13 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.http import Http404, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render, resolve_url
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import RegistroUsuarioForm
 from .models import Equipo, EquipoFavorito, Partido, PartidoFavorito, Prediccion, bandera_url
+from .stadium_data import ESTADIOS_2026
 
 
 CONFEDERACIONES = {
@@ -62,6 +64,18 @@ CONFEDERACIONES = {
 
 PLANTELES_CONFIRMADOS = {}
 TECNICOS_CONFIRMADOS = {}
+
+
+
+def url_volver(request, fallback):
+    referer = request.META.get('HTTP_REFERER', '')
+    if referer and url_has_allowed_host_and_scheme(
+        referer,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return referer
+    return resolve_url(fallback)
 
 
 def agrupar_partidos(partidos):
@@ -540,6 +554,7 @@ def partido_detalle(request, partido_id):
             'favorito': favorito,
             'tabla_grupo': tabla_grupo,
             'proximos_grupo': proximos_grupo,
+            'volver_url': url_volver(request, 'core:home'),
         },
     )
 
@@ -589,6 +604,7 @@ def seleccion_detalle(request, equipo_id):
         nombre_camiseta = jugador.camiseta or jugador.nombre
         jugador.camiseta_larga = len(nombre_camiseta) > 12
         jugador.camiseta_muy_larga = len(nombre_camiseta) > 16
+        jugador.nombre_completo = f'{jugador.nombres} {jugador.apellidos}'.strip()
 
     return render(
         request,
@@ -604,6 +620,7 @@ def seleccion_detalle(request, equipo_id):
             'codigo_fifa': equipo.codigo_fifa,
             'tecnico': equipo.tecnico or TECNICOS_CONFIRMADOS.get(equipo.nombre, 'A confirmar'),
             'convocados': convocados or PLANTELES_CONFIRMADOS.get(equipo.nombre, []),
+            'volver_url': url_volver(request, 'core:paises'),
         },
     )
 
@@ -644,6 +661,74 @@ def paises(request):
         )
 
     return render(request, 'core/paises.html', {'tarjetas': tarjetas})
+
+
+def construir_tarjetas_estadios():
+    partidos_por_estadio = {}
+    partidos = (
+        Partido.objects.exclude(estadio='Sede a confirmar')
+        .select_related('equipo_local', 'equipo_visitante')
+        .order_by('fecha', 'hora', 'numero')
+    )
+    for partido in partidos:
+        partidos_por_estadio.setdefault(partido.estadio, []).append(partido)
+
+    tarjetas = []
+    for estadio in ESTADIOS_2026:
+        partidos_estadio = partidos_por_estadio.get(estadio['estadio'], [])
+        proximos = [partido for partido in partidos_estadio if partido.estado != Partido.ESTADO_FINALIZADO]
+        descripcion = [
+            parrafo
+            for parrafo in estadio.get('descripcion', [])
+            if 'Partido ' not in parrafo
+        ]
+        tarjetas.append(
+            {
+                **estadio,
+                'descripcion': descripcion,
+                'resumen': descripcion[0] if descripcion else '',
+                'partidos': partidos_estadio,
+                'partidos_count': len(partidos_estadio),
+                'proximos': proximos[:3],
+                'finalizados_count': len(partidos_estadio) - len(proximos),
+            }
+        )
+    return tarjetas
+
+
+def estadios(request):
+    tarjetas = construir_tarjetas_estadios()
+    return render(
+        request,
+        'core/estadios.html',
+        {
+            'estadios': tarjetas,
+            'total_estadios': len(tarjetas),
+            'fuente_fifa_url': (
+                'https://www.fifa.com/es/tournaments/mens/worldcup/canadamexicousa2026/'
+                'articles/copa-mundial-2026-estadios-fifa-soccer-futbol-mexico-estados-unidos-canada'
+            ),
+        },
+    )
+
+
+def estadio_detalle(request, slug):
+    estadio = next((item for item in construir_tarjetas_estadios() if item['slug'] == slug), None)
+    if not estadio:
+        raise Http404('Estadio no encontrado')
+
+    return render(
+        request,
+        'core/estadio_detalle.html',
+        {
+            'estadio': estadio,
+            'volver_url': resolve_url('core:estadios'),
+            'fuente_fifa_url': (
+                'https://www.fifa.com/es/tournaments/mens/worldcup/canadamexicousa2026/'
+                'articles/copa-mundial-2026-estadios-fifa-soccer-futbol-mexico-estados-unidos-canada'
+            ),
+        },
+    )
 
 
 def predicciones(request):

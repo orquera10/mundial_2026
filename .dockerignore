@@ -1,0 +1,14 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.env
+db.sqlite3
+*.log
+poll_results.out.log
+poll_results.err.log
+runserver.out.log
+runserver.err.log
+staticfiles
+media

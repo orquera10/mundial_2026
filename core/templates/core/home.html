@@ -1097,6 +1097,30 @@
     </div>
 </details>
 
+{% if user.is_authenticated %}
+<details class="panel filter-panel favorites-panel">
+    <summary>
+        <span class="filter-summary-main">
+            <span class="icon gold" aria-hidden="true"><i class="bi bi-star-fill"></i></span>
+            Favoritos
+        </span>
+        <span class="filter-summary-meta">
+            {{ favoritos_partidos|length }} partido{% if favoritos_partidos|length != 1 %}s{% endif %}
+        </span>
+        <span class="expand-hint" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
+    </summary>
+    <div class="filter-panel-body">
+        <div class="match-list favorites-list">
+            {% for partido in favoritos_partidos %}
+                {% include 'core/partials/partido_card.html' with partido=partido %}
+            {% empty %}
+                <div class="empty">Todavia no tenes partidos favoritos. Marca una estrella en un partido o agrega una seleccion favorita.</div>
+            {% endfor %}
+        </div>
+    </div>
+</details>
+{% endif %}
+
 <div class="section-title">
     <div>
         <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-calendar"></i></span>En vivo y próximos</span></h2>

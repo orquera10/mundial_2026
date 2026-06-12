@@ -99,6 +99,21 @@ class MundialHomeTests(TestCase):
         self.client.post(f'/selecciones/{mexico.id}/favorito/', {'next': '/paises/'})
         self.assertFalse(EquipoFavorito.objects.filter(usuario=usuario, equipo=mexico).exists())
 
+    def test_home_muestra_favoritos_en_desplegable_cerrado(self):
+        usuario = User.objects.create_user(username='favoritos', password='clave-segura-123')
+        partido = Partido.objects.get(numero=1)
+        PartidoFavorito.objects.create(usuario=usuario, partido=partido)
+        self.client.force_login(usuario)
+
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<details class="panel filter-panel favorites-panel">', html=False)
+        self.assertContains(response, 'Favoritos')
+        self.assertContains(response, '1 partido')
+        self.assertContains(response, 'Mexico')
+        self.assertContains(response, 'South Africa')
+
     def test_home_muestra_filtros_compactados(self):
         response = self.client.get('/')
 

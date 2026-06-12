@@ -428,6 +428,7 @@ def home(request):
 
     favoritos_ids = set()
     predicciones_por_partido = {}
+    favoritos_partidos = []
     if request.user.is_authenticated:
         favoritos_ids = set(
             PartidoFavorito.objects.filter(usuario=request.user).values_list('partido_id', flat=True)
@@ -436,6 +437,11 @@ def home(request):
             prediccion.partido_id: prediccion
             for prediccion in Prediccion.objects.filter(usuario=request.user)
         }
+        favoritos_partidos = list(
+            Partido.objects.filter(favoritos__usuario=request.user)
+            .select_related('equipo_local', 'equipo_visitante')
+            .order_by('fecha', 'hora', 'numero')
+        )
 
     partidos = anotar_predicciones(partidos, predicciones_por_partido)
     partidos_en_vivo = list(
@@ -450,6 +456,7 @@ def home(request):
         .order_by('fecha', 'hora', 'numero')[:cupo_proximos]
     )
     proximos = anotar_predicciones(partidos_en_vivo + partidos_programados, predicciones_por_partido)
+    favoritos_partidos = anotar_predicciones(favoritos_partidos, predicciones_por_partido)
     resumen = Partido.objects.aggregate(
         total=Count('id'),
         programados=Count('id', filter=Q(estado=Partido.ESTADO_PROGRAMADO)),
@@ -479,6 +486,7 @@ def home(request):
         'partidos': partidos,
         'secciones_partidos': secciones_partidos,
         'proximos': proximos,
+        'favoritos_partidos': favoritos_partidos,
         'resumen': resumen,
         'favoritos_ids': favoritos_ids,
         'grupos': list('ABCDEFGHIJKL'),

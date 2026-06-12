@@ -73,7 +73,7 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'Paises')
         self.assertContains(response, 'Mexico')
         self.assertContains(response, 'Argentina')
-        self.assertContains(response, 'Ver seleccion')
+        self.assertContains(response, 'aria-label="Ver seleccion Mexico"')
 
     def test_usuario_puede_marcar_pais_favorito(self):
         usuario = User.objects.create_user(username='paises', password='clave-segura-123')

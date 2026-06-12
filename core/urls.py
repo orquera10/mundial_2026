@@ -7,9 +7,11 @@ app_name = 'core'
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('paises/', views.paises, name='paises'),
     path('predicciones/', views.predicciones, name='predicciones'),
     path('almanaque/', views.almanaque, name='almanaque'),
     path('selecciones/<int:equipo_id>/', views.seleccion_detalle, name='seleccion_detalle'),
+    path('selecciones/<int:equipo_id>/favorito/', views.alternar_pais_favorito, name='alternar_pais_favorito'),
     path('partidos/<int:partido_id>/', views.partido_detalle, name='partido_detalle'),
     path('partidos/<int:partido_id>/favorito/', views.alternar_favorito, name='alternar_favorito'),
     path('partidos/<int:partido_id>/prediccion/', views.guardar_prediccion, name='guardar_prediccion'),

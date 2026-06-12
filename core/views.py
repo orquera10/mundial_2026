@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import RegistroUsuarioForm
-from .models import Equipo, Partido, PartidoFavorito, Prediccion, bandera_url
+from .models import Equipo, EquipoFavorito, Partido, PartidoFavorito, Prediccion, bandera_url
 
 
 CONFEDERACIONES = {
@@ -583,6 +583,44 @@ def seleccion_detalle(request, equipo_id):
     )
 
 
+def paises(request):
+    equipos = list(Equipo.objects.order_by('grupo', 'nombre'))
+    favoritos_ids = set()
+    if request.user.is_authenticated:
+        favoritos_ids = set(
+            EquipoFavorito.objects.filter(usuario=request.user).values_list('equipo_id', flat=True)
+        )
+
+    proximos_por_equipo = {}
+    partidos = (
+        Partido.objects.filter(fase=Partido.FASE_GRUPOS)
+        .select_related('equipo_local', 'equipo_visitante')
+        .order_by('fecha', 'hora', 'numero')
+    )
+    for partido in partidos:
+        for equipo in (partido.equipo_local, partido.equipo_visitante):
+            if not equipo:
+                continue
+            proximos_por_equipo.setdefault(equipo.id, [])
+            if len(proximos_por_equipo[equipo.id]) < 2:
+                proximos_por_equipo[equipo.id].append(partido)
+
+    tarjetas = []
+    for equipo in equipos:
+        confederacion, region = CONFEDERACIONES.get(equipo.nombre, ('A definir', 'A confirmar'))
+        tarjetas.append(
+            {
+                'equipo': equipo,
+                'confederacion': confederacion,
+                'region': region,
+                'proximos': proximos_por_equipo.get(equipo.id, []),
+                'favorito': equipo.id in favoritos_ids,
+            }
+        )
+
+    return render(request, 'core/paises.html', {'tarjetas': tarjetas})
+
+
 def predicciones(request):
     vista = request.GET.get('vista', 'previa')
     if vista not in {'previa', 'final', 'llaves'}:
@@ -639,6 +677,24 @@ def alternar_favorito(request, partido_id):
         messages.success(request, 'Partido agregado a tus favoritos.')
 
     volver = request.POST.get('next') or 'core:home'
+    return redirect(volver)
+
+
+@login_required
+def alternar_pais_favorito(request, equipo_id):
+    if request.method != 'POST':
+        return redirect('core:paises')
+
+    equipo = get_object_or_404(Equipo, id=equipo_id)
+    favorito = EquipoFavorito.objects.filter(usuario=request.user, equipo=equipo).first()
+    if favorito:
+        favorito.delete()
+        messages.success(request, f'{equipo.nombre} quitado de tus paises favoritos.')
+    else:
+        EquipoFavorito.objects.create(usuario=request.user, equipo=equipo)
+        messages.success(request, f'{equipo.nombre} agregado a tus paises favoritos.')
+
+    volver = request.POST.get('next') or 'core:paises'
     return redirect(volver)
 
 

@@ -1,0 +1,344 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Paises | Mundial 2026{% endblock %}
+
+{% block extra_head %}
+<style>
+    .countries-hero {
+        display: grid;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        color: #fff;
+        background: linear-gradient(135deg, var(--blue), var(--brand) 56%, var(--accent));
+        border-bottom: 4px solid var(--gold);
+        box-shadow: 0 16px 34px rgba(23, 32, 51, 0.14);
+    }
+
+    .countries-hero-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.85rem;
+    }
+
+    .countries-hero .logo-image {
+        width: min(8.5rem, 36vw);
+        filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.18));
+    }
+
+    .countries-hero h1 {
+        margin: 0;
+        color: #fff;
+        font-size: clamp(2rem, 9vw, 3.2rem);
+        line-height: 0.98;
+    }
+
+    .countries-hero p {
+        margin: 0;
+        max-width: 42rem;
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.35;
+    }
+
+    .countries-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        width: fit-content;
+        padding: 0.4rem 0.6rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        font-size: 0.8rem;
+        font-weight: 900;
+    }
+
+    .login-note {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        padding: 0.8rem;
+        border: 1px solid #d8dee9;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 10px 24px rgba(23, 32, 51, 0.07);
+    }
+
+    .login-note p {
+        margin: 0;
+        color: var(--muted);
+        font-weight: 700;
+        line-height: 1.3;
+    }
+
+    .countries-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+        gap: 0.75rem;
+    }
+
+    .country-card {
+        position: relative;
+        overflow: hidden;
+        display: grid;
+        gap: 0.75rem;
+        min-width: 0;
+        padding: 0.85rem;
+        border-radius: 8px;
+        border: 1px solid #d8dee9;
+        background:
+            linear-gradient(135deg, color-mix(in srgb, var(--team-main) 14%, #fff), #fff 46%, color-mix(in srgb, var(--team-alt) 10%, #fff));
+        box-shadow: 0 12px 26px rgba(23, 32, 51, 0.08);
+    }
+
+    .country-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0.35rem;
+        background: linear-gradient(180deg, var(--team-main), var(--team-alt));
+    }
+
+    .country-card-header {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 0.65rem;
+        min-width: 0;
+    }
+
+    .country-flag {
+        width: 3rem;
+        height: 3rem;
+        display: inline-grid;
+        place-items: center;
+        overflow: hidden;
+        border-radius: 50%;
+        background: #fff;
+        border: 1px solid rgba(23, 32, 51, 0.12);
+        box-shadow: 0 8px 18px rgba(23, 32, 51, 0.1);
+    }
+
+    .country-flag img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .country-title {
+        min-width: 0;
+        display: grid;
+        gap: 0.15rem;
+    }
+
+    .country-title a {
+        color: var(--ink);
+        font-size: 1.05rem;
+        font-weight: 900;
+        line-height: 1.05;
+        text-decoration: none;
+    }
+
+    .country-title a:hover {
+        text-decoration: underline;
+    }
+
+    .country-title small {
+        color: var(--muted);
+        font-weight: 800;
+    }
+
+    .favorite-country-form {
+        display: block;
+    }
+
+    .favorite-country-button {
+        width: 2.55rem;
+        height: 2.55rem;
+        display: inline-grid;
+        place-items: center;
+        padding: 0;
+        border-radius: 50%;
+        background: #fff;
+        border: 1px solid #d8dee9;
+        color: #7b8798;
+        box-shadow: 0 8px 18px rgba(23, 32, 51, 0.08);
+    }
+
+    .favorite-country-button.is-favorite {
+        background: #fff8df;
+        border-color: #f0d070;
+        color: #b77900;
+    }
+
+    .favorite-country-button:hover {
+        background: #f8fafc;
+        color: #b77900;
+    }
+
+    .country-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .country-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.35rem 0.5rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgba(216, 222, 233, 0.8);
+        color: var(--ink);
+        font-size: 0.78rem;
+        font-weight: 900;
+    }
+
+    .next-matches {
+        display: grid;
+        gap: 0.45rem;
+        padding-top: 0.1rem;
+    }
+
+    .next-matches strong {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+    }
+
+    .next-match {
+        display: grid;
+        gap: 0.15rem;
+        padding: 0.55rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgba(216, 222, 233, 0.85);
+    }
+
+    .next-match a {
+        color: var(--ink);
+        font-weight: 900;
+        text-decoration: none;
+        line-height: 1.15;
+    }
+
+    .next-match small {
+        color: var(--muted);
+        font-weight: 800;
+    }
+
+    .country-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .country-actions .button {
+        width: 100%;
+        justify-content: center;
+        border-radius: 8px;
+    }
+
+    @media (max-width: 520px) {
+        main {
+            width: min(100% - 1rem, 1180px);
+            margin-top: 0.8rem;
+        }
+
+        .countries-hero {
+            padding: 0.85rem;
+        }
+
+        .login-note {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .login-note .button {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .countries-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="countries-hero">
+    <div class="countries-hero-top">
+        {% include 'core/partials/logo_mundial.html' %}
+        <span class="countries-count"><i class="bi bi-flag"></i>{{ tarjetas|length }} selecciones</span>
+    </div>
+    <div>
+        <h1>Paises</h1>
+        <p>Recorre todas las selecciones del Mundial, entra al detalle de cada pais y marca tus favoritos para tenerlos presentes.</p>
+    </div>
+</section>
+
+{% if not user.is_authenticated %}
+    <div class="login-note">
+        <p>Inicia sesion para guardar tus paises favoritos.</p>
+        <a class="button secondary with-icon" href="{% url 'core:login' %}"><span class="icon" aria-hidden="true"><i class="bi bi-box-arrow-in-right"></i></span>Ingresar</a>
+    </div>
+{% endif %}
+
+<section class="countries-grid" aria-label="Listado de paises">
+    {% for item in tarjetas %}
+        <article class="country-card" style="--team-main: {{ item.equipo.color_principal }}; --team-alt: {{ item.equipo.color_secundario }};">
+            <div class="country-card-header">
+                <span class="country-flag" aria-hidden="true">
+                    {% if item.equipo.bandera_url %}
+                        <img src="{{ item.equipo.bandera_url }}" alt="">
+                    {% else %}
+                        <i class="bi bi-flag"></i>
+                    {% endif %}
+                </span>
+                <div class="country-title">
+                    <a href="{% url 'core:seleccion_detalle' item.equipo.id %}">{{ item.equipo.nombre }}</a>
+                    <small>Grupo {{ item.equipo.grupo|default:"-" }}</small>
+                </div>
+                {% if user.is_authenticated %}
+                    <form class="favorite-country-form" method="post" action="{% url 'core:alternar_pais_favorito' item.equipo.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button class="favorite-country-button{% if item.favorito %} is-favorite{% endif %}" type="submit" title="{% if item.favorito %}Quitar de favoritos{% else %}Agregar a favoritos{% endif %}" aria-label="{% if item.favorito %}Quitar {{ item.equipo.nombre }} de favoritos{% else %}Agregar {{ item.equipo.nombre }} a favoritos{% endif %}">
+                            <i class="bi {% if item.favorito %}bi-star-fill{% else %}bi-star{% endif %}"></i>
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+
+            <div class="country-meta">
+                <span class="country-pill"><i class="bi bi-globe-americas"></i>{{ item.region }}</span>
+                <span class="country-pill"><i class="bi bi-diagram-3"></i>{{ item.confederacion }}</span>
+            </div>
+
+            {% if item.proximos %}
+                <div class="next-matches">
+                    <strong><i class="bi bi-calendar-event"></i>Proximos partidos</strong>
+                    {% for partido in item.proximos %}
+                        <div class="next-match">
+                            <a href="{% url 'core:partido_detalle' partido.id %}">{{ partido.local_nombre }} vs {{ partido.visitante_nombre }}</a>
+                            <small>Partido {{ partido.numero }} · {{ partido.fecha_argentina|date:"d/m" }} · {{ partido.horario_argentina }}</small>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="country-actions">
+                <a class="button secondary with-icon" href="{% url 'core:seleccion_detalle' item.equipo.id %}"><span class="icon" aria-hidden="true"><i class="bi bi-arrow-right"></i></span>Ver seleccion</a>
+            </div>
+        </article>
+    {% endfor %}
+</section>
+{% endblock %}

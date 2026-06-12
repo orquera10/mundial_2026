@@ -388,6 +388,20 @@ class PartidoFavorito(models.Model):
         return f'{self.usuario} sigue {self.partido}'
 
 
+class EquipoFavorito(models.Model):
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    equipo = models.ForeignKey(Equipo, on_delete=models.CASCADE, related_name='favoritos')
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['usuario', 'equipo'], name='equipo_favorito_unico_por_usuario'),
+        ]
+
+    def __str__(self):
+        return f'{self.usuario} sigue {self.equipo}'
+
+
 class Prediccion(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     partido = models.ForeignKey(Partido, on_delete=models.CASCADE, related_name='predicciones')

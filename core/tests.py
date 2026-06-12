@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 
 from .api_integration import sync_match_result
-from .models import Equipo, Partido, Prediccion
+from .models import Equipo, EquipoFavorito, Partido, Prediccion
 
 
 class MundialHomeTests(TestCase):
@@ -61,6 +61,37 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'Partidos')
         self.assertContains(response, 'mini-flag')
         self.assertContains(response, 'match-expanded')
+
+    def test_menu_y_pagina_paises_listan_selecciones(self):
+        response = self.client.get('/')
+        self.assertContains(response, 'Paises')
+        self.assertContains(response, '/paises/')
+
+        response = self.client.get('/paises/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Paises')
+        self.assertContains(response, 'Mexico')
+        self.assertContains(response, 'Argentina')
+        self.assertContains(response, 'Ver seleccion')
+
+    def test_usuario_puede_marcar_pais_favorito(self):
+        usuario = User.objects.create_user(username='paises', password='clave-segura-123')
+        mexico = Equipo.objects.get(nombre='Mexico')
+        self.client.force_login(usuario)
+
+        response = self.client.post(
+            f'/selecciones/{mexico.id}/favorito/',
+            {'next': '/paises/'},
+            follow=True,
+        )
+
+        self.assertRedirects(response, '/paises/')
+        self.assertTrue(EquipoFavorito.objects.filter(usuario=usuario, equipo=mexico).exists())
+        self.assertContains(response, 'bi-star-fill')
+
+        self.client.post(f'/selecciones/{mexico.id}/favorito/', {'next': '/paises/'})
+        self.assertFalse(EquipoFavorito.objects.filter(usuario=usuario, equipo=mexico).exists())
 
     def test_home_muestra_filtros_compactados(self):
         response = self.client.get('/')

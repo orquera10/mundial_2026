@@ -2,17 +2,325 @@
 
 {% block title %}Ingresar | Mundial 2026{% endblock %}
 
+{% block extra_head %}
+<style>
+    main {
+        width: min(980px, calc(100% - 1.25rem));
+        margin-top: 1rem;
+    }
+
+    .auth-shell {
+        min-height: calc(100svh - 7rem);
+        display: grid;
+        align-items: center;
+    }
+
+    .auth-card {
+        overflow: hidden;
+        display: grid;
+        border: 1px solid rgba(216, 222, 233, 0.95);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 18px 44px rgba(23, 32, 51, 0.12);
+    }
+
+    .auth-hero {
+        position: relative;
+        display: grid;
+        gap: 0.8rem;
+        padding: 1.2rem;
+        color: #fff;
+        background:
+            linear-gradient(135deg, rgba(0, 75, 141, 0.96), rgba(0, 120, 82, 0.92) 58%, rgba(205, 32, 44, 0.9));
+        border-bottom: 4px solid var(--gold);
+    }
+
+    .auth-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto 0 0;
+        height: 4.5rem;
+        background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.14));
+        pointer-events: none;
+    }
+
+    .auth-brand {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .auth-brand .logo-image {
+        width: min(9rem, 38vw);
+        filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.2));
+    }
+
+    .auth-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        width: fit-content;
+        padding: 0.35rem 0.55rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .auth-copy {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .auth-copy h1 {
+        margin: 0;
+        max-width: 12ch;
+        color: #fff;
+        font-size: clamp(2rem, 10vw, 3rem);
+        line-height: 0.95;
+    }
+
+    .auth-copy p {
+        margin: 0;
+        max-width: 34rem;
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.35;
+    }
+
+    .auth-highlights {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.45rem;
+        margin-top: 0.35rem;
+    }
+
+    .auth-highlight {
+        display: grid;
+        gap: 0.25rem;
+        min-width: 0;
+        padding: 0.65rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.13);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .auth-highlight .icon {
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+    }
+
+    .auth-form-panel {
+        display: grid;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .auth-form-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .auth-form-title h2 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .auth-form-title small {
+        color: var(--muted);
+        font-weight: 800;
+    }
+
+    .auth-form {
+        display: grid;
+        gap: 0.85rem;
+    }
+
+    .auth-field {
+        display: grid;
+        gap: 0.35rem;
+    }
+
+    .auth-label {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin: 0;
+        color: var(--ink);
+        font-size: 0.9rem;
+    }
+
+    .auth-input-wrap {
+        position: relative;
+    }
+
+    .auth-input-wrap .input-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #687891;
+        pointer-events: none;
+    }
+
+    .auth-input-wrap input {
+        min-height: 3rem;
+        padding-left: 2.35rem;
+        border-radius: 8px;
+        background: #f8fafc;
+        font-size: 1rem;
+    }
+
+    .auth-input-wrap input:focus {
+        outline: 3px solid rgba(0, 120, 82, 0.16);
+        border-color: var(--brand);
+        background: #fff;
+    }
+
+    .auth-submit {
+        width: 100%;
+        min-height: 3rem;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+
+    .auth-alt {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        margin: 0;
+        padding-top: 0.25rem;
+        color: var(--muted);
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .auth-alt a {
+        color: var(--blue);
+        font-weight: 900;
+        text-decoration: none;
+    }
+
+    .auth-alt a:hover {
+        text-decoration: underline;
+    }
+
+    .auth-errors {
+        display: grid;
+        gap: 0.35rem;
+        margin: 0;
+        padding: 0.75rem;
+        border-radius: 8px;
+        background: #fff1f2;
+        color: #9f1239;
+        font-weight: 800;
+    }
+
+    @media (min-width: 760px) {
+        .auth-card {
+            grid-template-columns: minmax(0, 1.05fr) minmax(22rem, 0.95fr);
+        }
+
+        .auth-hero,
+        .auth-form-panel {
+            padding: 1.4rem;
+        }
+
+        .auth-highlights {
+            align-self: end;
+        }
+    }
+
+    @media (max-width: 520px) {
+        .auth-highlights {
+            grid-template-columns: 1fr;
+        }
+
+        .auth-highlight {
+            grid-template-columns: auto 1fr;
+            align-items: center;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<section class="panel">
-    <div class="panel-logo logo-large">
-        {% include 'core/partials/logo_mundial.html' %}
+<section class="auth-shell" aria-label="Ingreso">
+    <div class="auth-card">
+        <div class="auth-hero">
+            <div class="auth-brand">
+                {% include 'core/partials/logo_mundial.html' %}
+                <span class="auth-kicker"><i class="bi bi-phone"></i> Mobile</span>
+            </div>
+            <div class="auth-copy">
+                <h1>Volver al fixture</h1>
+                <p>Entra para guardar favoritos, cargar predicciones y seguir tus partidos desde el telefono.</p>
+            </div>
+            <div class="auth-highlights" aria-label="Funciones disponibles">
+                <span class="auth-highlight"><span class="icon light" aria-hidden="true"><i class="bi bi-star"></i></span>Favoritos</span>
+                <span class="auth-highlight"><span class="icon light" aria-hidden="true"><i class="bi bi-bullseye"></i></span>Predicciones</span>
+                <span class="auth-highlight"><span class="icon light" aria-hidden="true"><i class="bi bi-broadcast"></i></span>En vivo</span>
+            </div>
+        </div>
+
+        <div class="auth-form-panel">
+            <div class="auth-form-title">
+                <div>
+                    <small>Mundial 2026</small>
+                    <h2>Iniciar sesion</h2>
+                </div>
+                <span class="icon gold" aria-hidden="true"><i class="bi bi-shield-check"></i></span>
+            </div>
+
+            <form class="auth-form" method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="auth-errors">
+                        {% for error in form.non_field_errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="auth-field">
+                    <label class="auth-label" for="{{ form.username.id_for_label }}"><span class="icon" aria-hidden="true"><i class="bi bi-person"></i></span>Usuario</label>
+                    <div class="auth-input-wrap">
+                        <i class="bi bi-person input-icon" aria-hidden="true"></i>
+                        <input type="text" name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}" value="{{ form.username.value|default_if_none:'' }}" placeholder="Tu usuario" autocomplete="username" required>
+                    </div>
+                    {{ form.username.errors }}
+                </div>
+
+                <div class="auth-field">
+                    <label class="auth-label" for="{{ form.password.id_for_label }}"><span class="icon" aria-hidden="true"><i class="bi bi-lock"></i></span>Contrasena</label>
+                    <div class="auth-input-wrap">
+                        <i class="bi bi-lock input-icon" aria-hidden="true"></i>
+                        <input type="password" name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}" placeholder="Tu contrasena" autocomplete="current-password" required>
+                    </div>
+                    {{ form.password.errors }}
+                </div>
+
+                {% if next %}
+                    <input type="hidden" name="next" value="{{ next }}">
+                {% endif %}
+
+                <button class="auth-submit with-icon" type="submit"><span class="icon light" aria-hidden="true"><i class="bi bi-box-arrow-in-right"></i></span>Entrar</button>
+            </form>
+
+            <p class="auth-alt">No tenes cuenta? <a href="{% url 'core:registro' %}">Registrate</a></p>
+        </div>
     </div>
-    <h1><span class="label-with-icon"><span class="icon" aria-hidden="true">→</span>Ingresar</span></h1>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_div }}
-        <button class="with-icon" type="submit"><span class="icon light" aria-hidden="true">→</span>Entrar</button>
-    </form>
-    <p>No tenes cuenta? <a href="{% url 'core:registro' %}">Registrate</a>.</p>
 </section>
 {% endblock %}

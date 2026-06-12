@@ -56,10 +56,12 @@ def main():
         result = sync_due_matches_results(
             follow_hours=args.follow_hours,
         )
+        mensaje = result.get('mensaje', '')
         print(
-            'Partidos consultados: {consultados}. Partidos actualizados: {actualizados}. {mensaje}'.format(
-                mensaje=result.get('mensaje', ''),
-                **result,
+            (
+                f"Partidos consultados: {result.get('consultados', 0)}. "
+                f"Partidos actualizados: {result.get('actualizados', 0)}. "
+                f"{mensaje}"
             ).strip()
         )
         if result.get('date_from') and result.get('date_to'):

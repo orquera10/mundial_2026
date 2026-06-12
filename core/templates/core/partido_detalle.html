@@ -1,0 +1,550 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Partido {{ partido.numero }} | Mundial 2026{% endblock %}
+
+{% block extra_head %}
+<style>
+    .detail-hero {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1rem;
+        border-radius: 8px;
+        color: var(--ink);
+        background:
+            linear-gradient(135deg, color-mix(in srgb, var(--team-local, var(--blue)) 12%, #fff), color-mix(in srgb, var(--team-visitor, var(--brand)) 10%, #fff) 42%, #fff 74%),
+            #fff;
+        border: 1px solid var(--line);
+        border-left: 5px solid var(--team-local, var(--blue));
+        border-bottom: 4px solid color-mix(in srgb, var(--team-local-alt, var(--gold)) 32%, var(--gold));
+        box-shadow: 0 14px 32px rgba(23, 32, 51, 0.08);
+    }
+
+    .back-link {
+        width: fit-content;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: color-mix(in srgb, var(--team-local, var(--blue)) 60%, var(--ink));
+        font-weight: 800;
+        text-decoration: none;
+    }
+
+    .detail-kicker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 800;
+    }
+
+    .detail-scoreboard {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 0.7rem;
+        align-items: center;
+    }
+
+    .detail-team {
+        display: grid;
+        justify-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+        text-align: center;
+        font-weight: 900;
+    }
+
+    .detail-team-link {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .detail-team-link:hover {
+        text-decoration: underline;
+    }
+
+    .detail-flag {
+        width: 3.2rem;
+        height: 3.2rem;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 50%;
+        overflow: hidden;
+        background: #fff;
+        border: 1px solid color-mix(in srgb, var(--team-local, var(--line)) 12%, var(--line));
+    }
+
+    .detail-flag img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .detail-score {
+        min-width: 4.6rem;
+        padding: 0.7rem;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--team-local, #172033), var(--team-visitor, #24324a));
+        color: #fff;
+        text-align: center;
+        font-size: 1.25rem;
+        font-weight: 900;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .detail-section {
+        display: grid;
+        gap: 0.75rem;
+        position: relative;
+        overflow: hidden;
+        background: #fff;
+    }
+
+    .detail-section h2 {
+        margin-bottom: 0.1rem;
+        color: var(--ink);
+    }
+
+    .detail-section h2 .icon {
+        background: #f1f6fb;
+        border: 1px solid var(--line);
+        color: var(--blue);
+    }
+
+    .info-list {
+        display: grid;
+        gap: 0.55rem;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        padding: 0.7rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: none;
+    }
+
+    .info-item > .icon {
+        background: #f1f6fb;
+        color: var(--blue);
+    }
+
+    .info-item strong {
+        display: block;
+        margin-bottom: 0.16rem;
+        font-size: 0.78rem;
+        color: var(--muted);
+    }
+
+    .info-item span:last-child {
+        font-weight: 800;
+    }
+
+    .detail-actions {
+        display: grid;
+        gap: 0.7rem;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .standings {
+        width: 100%;
+        min-width: 520px;
+        border-collapse: collapse;
+    }
+
+    .standings th,
+    .standings td {
+        padding: 0.58rem 0.5rem;
+        border-bottom: 1px solid var(--line);
+        text-align: center;
+        font-size: 0.86rem;
+    }
+
+    .standings th {
+        background: #f1f6fb;
+        color: var(--muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+    }
+
+    .standings td:first-child,
+    .standings th:first-child {
+        text-align: left;
+    }
+
+    .team-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+        font-weight: 900;
+    }
+
+    .mini-flag {
+        width: 1.65rem;
+        height: 1.65rem;
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        overflow: hidden;
+        background: #f5f7fb;
+        border: 1px solid #d9e1ec;
+    }
+
+    .mini-flag img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .group-fixtures {
+        display: grid;
+        gap: 0.55rem;
+    }
+
+    .group-fixture {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.55rem;
+        align-items: center;
+        padding: 0.65rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        text-decoration: none;
+        color: var(--ink);
+    }
+
+    .group-fixture strong {
+        display: block;
+        overflow-wrap: anywhere;
+    }
+
+    .fixture-meta {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .fixture-arrow {
+        color: var(--muted);
+    }
+
+    .favorite-form {
+        display: block;
+    }
+
+    .favorite-button {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        border-color: #c7d0dc;
+        background: #fff;
+        color: var(--ink);
+    }
+
+    .favorite-button.active {
+        border-color: #d9a441;
+        background: #fff5d8;
+        color: #694300;
+    }
+
+    .prediction-form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.55rem;
+        padding: 0.75rem;
+        border-radius: 8px;
+        background: #f5f8fc;
+        border: 1px solid #dbe3ee;
+    }
+
+    .prediction-form label {
+        display: grid;
+        gap: 0.3rem;
+        margin: 0;
+        min-width: 0;
+    }
+
+    .prediction-form label span {
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 800;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .prediction-form input {
+        text-align: center;
+        font-weight: 900;
+    }
+
+    .prediction-footer {
+        grid-column: 1 / -1;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .autosave-status {
+        min-height: 1.1rem;
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .reset-prediction-form {
+        display: none;
+    }
+
+    .reset-prediction-button {
+        width: 1.45rem;
+        height: 1.45rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border-radius: 50%;
+        border: 1px solid #d9e1ec;
+        background: #fff;
+        color: #9f1239;
+        line-height: 1;
+    }
+
+    @media (max-width: 720px) {
+        main {
+            width: min(100% - 1rem, 720px);
+            margin-top: 0.75rem;
+        }
+
+        .detail-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .detail-scoreboard {
+            gap: 0.45rem;
+        }
+
+        .detail-flag {
+            width: 2.75rem;
+            height: 2.75rem;
+        }
+
+        .detail-team {
+            font-size: 0.9rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="detail-hero" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }};">
+    <a class="back-link" href="{% url 'core:home' %}"><i class="bi bi-chevron-left" aria-hidden="true"></i>Volver</a>
+    <div class="detail-kicker">
+        <span><i class="bi bi-hash" aria-hidden="true"></i> Partido {{ partido.numero }}</span>
+        <span>{{ partido.get_fase_display }}{% if partido.grupo %} - Grupo {{ partido.grupo }}{% endif %}</span>
+        <span>{{ partido.get_estado_display }}</span>
+    </div>
+    <div class="detail-scoreboard">
+        <div class="detail-team">
+            <span class="detail-flag" aria-hidden="true">
+                {% if partido.bandera_local_url %}
+                    <img src="{{ partido.bandera_local_url }}" alt="">
+                {% else %}
+                    {{ partido.bandera_local }}
+                {% endif %}
+            </span>
+            {% if partido.equipo_local_id %}
+                <a class="detail-team-link" href="{% url 'core:seleccion_detalle' partido.equipo_local_id %}">{{ partido.local_nombre }}</a>
+            {% else %}
+                <span>{{ partido.local_nombre }}</span>
+            {% endif %}
+        </div>
+        <div class="detail-score">{{ partido.marcador }}</div>
+        <div class="detail-team">
+            <span class="detail-flag" aria-hidden="true">
+                {% if partido.bandera_visitante_url %}
+                    <img src="{{ partido.bandera_visitante_url }}" alt="">
+                {% else %}
+                    {{ partido.bandera_visitante }}
+                {% endif %}
+            </span>
+            {% if partido.equipo_visitante_id %}
+                <a class="detail-team-link" href="{% url 'core:seleccion_detalle' partido.equipo_visitante_id %}">{{ partido.visitante_nombre }}</a>
+            {% else %}
+                <span>{{ partido.visitante_nombre }}</span>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<div class="detail-grid" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }};">
+    <section class="panel detail-section">
+        <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-info-circle"></i></span>Informacion</span></h2>
+        <div class="info-list">
+            <div class="info-item">
+                <span class="icon" aria-hidden="true"><i class="bi bi-clock"></i></span>
+                <span><strong>Fecha y hora Argentina</strong><span>{{ partido.fecha_argentina|date:"d/m/Y" }} - {{ partido.horario_argentina }}</span></span>
+            </div>
+            <div class="info-item">
+                <span class="icon" aria-hidden="true"><i class="bi bi-calendar-event"></i></span>
+                <span><strong>Fecha y hora local</strong><span>{{ partido.fecha|date:"d/m/Y" }} - {{ partido.horario }}</span></span>
+            </div>
+            <div class="info-item">
+                <span class="icon" aria-hidden="true"><i class="bi bi-geo-alt"></i></span>
+                <span><strong>Sede</strong><span>{{ partido.estadio }}{% if partido.ciudad %}, {{ partido.ciudad }}{% endif %}</span></span>
+            </div>
+            {% if partido.arbitro %}
+                <div class="info-item">
+                    <span class="icon" aria-hidden="true"><i class="bi bi-person-badge"></i></span>
+                    <span><strong>Arbitro</strong><span>{{ partido.arbitro }}{% if partido.arbitro_nacionalidad %} ({{ partido.arbitro_nacionalidad }}){% endif %}</span></span>
+                </div>
+            {% endif %}
+            <div class="info-item">
+                <span class="icon" aria-hidden="true"><i class="bi bi-tv"></i></span>
+                <span><strong>TV Argentina</strong><span>{{ partido.canales_argentina|default:"A confirmar" }}</span></span>
+            </div>
+            <div class="info-item">
+                <span class="icon" aria-hidden="true"><i class="bi bi-play-circle"></i></span>
+                <span><strong>Streaming</strong><span>{{ partido.streaming_argentina|default:"A confirmar" }}</span></span>
+            </div>
+            {% if partido.transmision_notas %}
+                <div class="info-item">
+                    <span class="icon" aria-hidden="true"><i class="bi bi-broadcast"></i></span>
+                    <span><strong>Nota de transmision</strong><span>{{ partido.transmision_notas }}</span></span>
+                </div>
+            {% endif %}
+            {% if partido.notas %}
+                <div class="info-item">
+                    <span class="icon" aria-hidden="true"><i class="bi bi-journal-text"></i></span>
+                    <span><strong>Notas</strong><span>{{ partido.notas }}</span></span>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if tabla_grupo %}
+        <section class="panel detail-section">
+            <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-table"></i></span>Tabla Grupo {{ partido.grupo }}</span></h2>
+            <div class="table-wrap">
+                <table class="standings">
+                    <thead>
+                        <tr>
+                            <th>Equipo</th>
+                            <th>Pts</th>
+                            <th>PJ</th>
+                            <th>PG</th>
+                            <th>PE</th>
+                            <th>PP</th>
+                            <th>GF</th>
+                            <th>GC</th>
+                            <th>DG</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in tabla_grupo %}
+                            <tr>
+                                <td>
+                                    <span class="team-cell">
+                                        <span class="mini-flag" aria-hidden="true">
+                                            {% if fila.equipo.bandera_url %}
+                                                <img src="{{ fila.equipo.bandera_url }}" alt="">
+                                            {% else %}
+                                                {{ fila.equipo.bandera }}
+                                            {% endif %}
+                                        </span>
+                                        <span>{{ fila.equipo.nombre }}</span>
+                                    </span>
+                                </td>
+                                <td><strong>{{ fila.pts }}</strong></td>
+                                <td>{{ fila.pj }}</td>
+                                <td>{{ fila.pg }}</td>
+                                <td>{{ fila.pe }}</td>
+                                <td>{{ fila.pp }}</td>
+                                <td>{{ fila.gf }}</td>
+                                <td>{{ fila.gc }}</td>
+                                <td>{{ fila.dg }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if proximos_grupo %}
+        <section class="panel detail-section">
+            <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-calendar2-week"></i></span>Proximos del Grupo {{ partido.grupo }}</span></h2>
+            <div class="group-fixtures">
+                {% for item in proximos_grupo %}
+                    <a class="group-fixture" href="{% url 'core:partido_detalle' item.id %}">
+                        <span>
+                            <strong>{{ item.local_nombre }} vs {{ item.visitante_nombre }}</strong>
+                            <span class="fixture-meta">{{ item.fecha_argentina|date:"d/m" }} - {{ item.horario_argentina }} · Partido {{ item.numero }}</span>
+                        </span>
+                        <span class="fixture-arrow" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    <aside class="panel detail-section">
+        <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-person-check"></i></span>Tu partido</span></h2>
+        {% if user.is_authenticated %}
+            <div class="detail-actions">
+                <form class="favorite-form" method="post" action="{% url 'core:alternar_favorito' partido.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button class="favorite-button {% if favorito %}active{% endif %}" type="submit">
+                        <i class="bi {% if favorito %}bi-star-fill{% else %}bi-star{% endif %}" aria-hidden="true"></i>{% if favorito %}Favorito{% else %}Favorito{% endif %}
+                    </button>
+                </form>
+                <form class="prediction-form autosave-prediction" method="post" action="{% url 'core:guardar_prediccion' partido.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <label>
+                        <span>{{ partido.local_nombre }}</span>
+                        <input type="number" min="0" max="99" name="goles_local" value="{{ partido.prediccion_usuario.goles_local }}" aria-label="Goles de {{ partido.local_nombre }}">
+                    </label>
+                    <label>
+                        <span>{{ partido.visitante_nombre }}</span>
+                        <input type="number" min="0" max="99" name="goles_visitante" value="{{ partido.prediccion_usuario.goles_visitante }}" aria-label="Goles de {{ partido.visitante_nombre }}">
+                    </label>
+                    <span class="prediction-footer">
+                        <span class="autosave-status" aria-live="polite">{% if partido.prediccion_usuario %}Guardada{% else %}Completa ambos goles{% endif %}</span>
+                        <button class="reset-prediction-button" type="submit" form="reset-detail-prediction-{{ partido.id }}" title="Restablecer prediccion" aria-label="Restablecer prediccion"><i class="bi bi-arrow-clockwise"></i></button>
+                    </span>
+                </form>
+                <form id="reset-detail-prediction-{{ partido.id }}" class="reset-prediction-form" method="post" action="{% url 'core:resetear_prediccion' partido.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                </form>
+            </div>
+        {% else %}
+            <p>Inicia sesion para guardar este partido como favorito y cargar tu prediccion.</p>
+            <a class="button with-icon" href="{% url 'core:login' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-box-arrow-in-right"></i></span>Ingresar</a>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

@@ -1,22 +1,33 @@
 {% with prediccion=partido.prediccion_usuario %}
-<details class="match-card {{ partido.estado }}" data-partido-id="{{ partido.id }}">
+{% with local_nombre=partido.display_local_nombre|default:partido.local_nombre visitante_nombre=partido.display_visitante_nombre|default:partido.visitante_nombre local_bandera=partido.display_local_bandera|default:partido.bandera_local visitante_bandera=partido.display_visitante_bandera|default:partido.bandera_visitante local_bandera_url=partido.display_local_bandera_url|default:partido.bandera_local_url visitante_bandera_url=partido.display_visitante_bandera_url|default:partido.bandera_visitante_url %}
+<details class="match-card {{ partido.estado }}" data-partido-id="{{ partido.id }}" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }};">
     <summary class="match-summary">
         <div class="compact-meta">
             <span><i class="bi bi-hash" aria-hidden="true"></i>{{ partido.numero }}</span>
-            <span class="compact-time"><i class="bi bi-clock" aria-hidden="true"></i>{{ partido.fecha_argentina|date:"d/m" }} · {{ partido.horario_argentina }}</span>
+            <span class="compact-time"><i class="bi bi-clock" aria-hidden="true"></i>{{ partido.fecha_argentina|date:"d/m" }} - {{ partido.horario_argentina }}</span>
             <span class="badge {{ partido.estado }}">{{ partido.get_estado_display }}</span>
+            {% if partido.estado == 'en_vivo' %}
+                <span class="live-indicator" aria-label="Partido en vivo" title="En vivo"><span class="live-dot" aria-hidden="true"></span>En vivo</span>
+            {% endif %}
+            {% if prediccion %}
+                <span class="compact-prediction-badge {{ prediccion.comparacion_estado }}" title="{{ prediccion.comparacion_label }}"><i class="bi bi-bullseye" aria-hidden="true"></i>{{ prediccion.goles_local }}-{{ prediccion.goles_visitante }}</span>
+            {% endif %}
         </div>
 
         <div class="compact-scoreline">
             <div class="compact-team">
                 <span class="flag compact-flag" aria-hidden="true">
-                    {% if partido.bandera_local_url %}
-                        <img class="flag-img" src="{{ partido.bandera_local_url }}" alt="">
+                    {% if local_bandera_url %}
+                        <img class="flag-img" src="{{ local_bandera_url }}" alt="">
                     {% else %}
-                        {{ partido.bandera_local }}
+                        {{ local_bandera }}
                     {% endif %}
                 </span>
-                <span class="team-name">{{ partido.local_nombre }}</span>
+                {% if partido.equipo_local_id %}
+                    <a class="team-name team-link" href="{% url 'core:seleccion_detalle' partido.equipo_local_id %}">{{ local_nombre }}</a>
+                {% else %}
+                    <span class="team-name">{{ local_nombre }}</span>
+                {% endif %}
             </div>
 
             <div class="score-wrap">
@@ -25,13 +36,17 @@
 
             <div class="compact-team">
                 <span class="flag compact-flag" aria-hidden="true">
-                    {% if partido.bandera_visitante_url %}
-                        <img class="flag-img" src="{{ partido.bandera_visitante_url }}" alt="">
+                    {% if visitante_bandera_url %}
+                        <img class="flag-img" src="{{ visitante_bandera_url }}" alt="">
                     {% else %}
-                        {{ partido.bandera_visitante }}
+                        {{ visitante_bandera }}
                     {% endif %}
                 </span>
-                <span class="team-name">{{ partido.visitante_nombre }}</span>
+                {% if partido.equipo_visitante_id %}
+                    <a class="team-name team-link" href="{% url 'core:seleccion_detalle' partido.equipo_visitante_id %}">{{ visitante_nombre }}</a>
+                {% else %}
+                    <span class="team-name">{{ visitante_nombre }}</span>
+                {% endif %}
             </div>
         </div>
 
@@ -58,8 +73,34 @@
             {% endif %}
         </div>
 
+        {% if partido.proyeccion_local_nombre or partido.proyeccion_visitante_nombre %}
+            <div class="projection-note">
+                <span class="projection-title"><i class="bi bi-bullseye" aria-hidden="true"></i>Segun tus predicciones</span>
+                <span class="projection-team">
+                    {% if partido.proyeccion_local_bandera_url %}
+                        <img src="{{ partido.proyeccion_local_bandera_url }}" alt="">
+                    {% else %}
+                        {{ partido.proyeccion_local_bandera }}
+                    {% endif %}
+                    {{ partido.proyeccion_local_nombre }}
+                </span>
+                <span class="projection-vs">vs</span>
+                <span class="projection-team">
+                    {% if partido.proyeccion_visitante_bandera_url %}
+                        <img src="{{ partido.proyeccion_visitante_bandera_url }}" alt="">
+                    {% else %}
+                        {{ partido.proyeccion_visitante_bandera }}
+                    {% endif %}
+                    {{ partido.proyeccion_visitante_nombre }}
+                </span>
+            </div>
+        {% endif %}
+
         {% if user.is_authenticated %}
             <div class="match-actions">
+                <a class="button secondary with-icon" href="{% url 'core:partido_detalle' partido.id %}">
+                    <span class="icon" aria-hidden="true"><i class="bi bi-info-circle"></i></span>Mas detalles
+                </a>
                 <form class="favorite-form" method="post" action="{% url 'core:alternar_favorito' partido.id %}">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -71,12 +112,12 @@
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
                     <label>
-                        <span>{{ partido.local_nombre }}</span>
-                        <input type="number" min="0" max="99" name="goles_local" value="{{ prediccion.goles_local }}" aria-label="Goles de {{ partido.local_nombre }}">
+                        <span>{{ local_nombre }}</span>
+                        <input type="number" min="0" max="99" name="goles_local" value="{{ prediccion.goles_local }}" aria-label="Goles de {{ local_nombre }}">
                     </label>
                     <label>
-                        <span>{{ partido.visitante_nombre }}</span>
-                        <input type="number" min="0" max="99" name="goles_visitante" value="{{ prediccion.goles_visitante }}" aria-label="Goles de {{ partido.visitante_nombre }}">
+                        <span>{{ visitante_nombre }}</span>
+                        <input type="number" min="0" max="99" name="goles_visitante" value="{{ prediccion.goles_visitante }}" aria-label="Goles de {{ visitante_nombre }}">
                     </label>
                     <span class="prediction-footer">
                         <span class="autosave-status" aria-live="polite">{% if prediccion %}Guardada{% else %}Completa ambos goles{% endif %}</span>
@@ -88,7 +129,14 @@
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
                 </form>
             </div>
+        {% else %}
+            <div class="match-actions">
+                <a class="button secondary with-icon" href="{% url 'core:partido_detalle' partido.id %}">
+                    <span class="icon" aria-hidden="true"><i class="bi bi-info-circle"></i></span>Mas detalles
+                </a>
+            </div>
         {% endif %}
     </div>
 </details>
+{% endwith %}
 {% endwith %}

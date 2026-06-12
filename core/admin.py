@@ -22,6 +22,7 @@ class PartidoAdmin(admin.ModelAdmin):
         'marcador',
         'estado',
         'canales_argentina',
+        'arbitro',
         'estadio',
     )
     list_editable = ('estado', 'canales_argentina')
@@ -35,6 +36,7 @@ class PartidoAdmin(admin.ModelAdmin):
         'ciudad',
         'canales_argentina',
         'streaming_argentina',
+        'arbitro',
     )
     fieldsets = (
         (
@@ -66,6 +68,22 @@ class PartidoAdmin(admin.ModelAdmin):
                     'canales_argentina',
                     'streaming_argentina',
                     'transmision_notas',
+                )
+            },
+        ),
+        (
+            'Datos externos',
+            {
+                'fields': (
+                    'football_data_id',
+                    'jornada',
+                    'etapa_api',
+                    'grupo_api',
+                    'arbitro',
+                    'arbitro_nacionalidad',
+                    'evento_actualizado',
+                    'escudo_local_url',
+                    'escudo_visitante_url',
                 )
             },
         ),

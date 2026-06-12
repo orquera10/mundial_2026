@@ -2,6 +2,9 @@ from django.core.management.base import BaseCommand
 
 from core.api_integration import sync_matches_results
 
+FASE_PREVIA_DATE_FROM = '2026-06-11'
+FASE_PREVIA_DATE_TO = '2026-06-30'
+
 
 class Command(BaseCommand):
     help = 'Sincroniza resultados de partidos desde API externa'
@@ -19,8 +22,8 @@ class Command(BaseCommand):
         date_from = options['date_from']
         date_to = options['date_to']
         if options['fase_previa']:
-            date_from = '2026-06-11'
-            date_to = '2026-06-27'
+            date_from = FASE_PREVIA_DATE_FROM
+            date_to = FASE_PREVIA_DATE_TO
 
         partidos_actualizados = sync_matches_results(date_from=date_from, date_to=date_to)
         self.stdout.write(

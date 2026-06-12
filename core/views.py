@@ -9,6 +9,61 @@ from .forms import RegistroUsuarioForm
 from .models import Equipo, Partido, PartidoFavorito, Prediccion, bandera_url
 
 
+CONFEDERACIONES = {
+    'Algeria': ('CAF', 'Africa'),
+    'Argentina': ('CONMEBOL', 'Sudamerica'),
+    'Australia': ('AFC', 'Asia-Pacifico'),
+    'Austria': ('UEFA', 'Europa'),
+    'Belgium': ('UEFA', 'Europa'),
+    'Bosnia and Herzegovina': ('UEFA', 'Europa'),
+    'Brazil': ('CONMEBOL', 'Sudamerica'),
+    'Cabo Verde': ('CAF', 'Africa'),
+    'Canada': ('CONCACAF', 'Norteamerica'),
+    'Colombia': ('CONMEBOL', 'Sudamerica'),
+    'Congo DR': ('CAF', 'Africa'),
+    "Cote d'Ivoire": ('CAF', 'Africa'),
+    'Croatia': ('UEFA', 'Europa'),
+    'Curacao': ('CONCACAF', 'Caribe'),
+    'Czechia': ('UEFA', 'Europa'),
+    'Ecuador': ('CONMEBOL', 'Sudamerica'),
+    'Egypt': ('CAF', 'Africa'),
+    'England': ('UEFA', 'Europa'),
+    'France': ('UEFA', 'Europa'),
+    'Germany': ('UEFA', 'Europa'),
+    'Ghana': ('CAF', 'Africa'),
+    'Haiti': ('CONCACAF', 'Caribe'),
+    'IR Iran': ('AFC', 'Asia'),
+    'Iraq': ('AFC', 'Asia'),
+    'Japan': ('AFC', 'Asia'),
+    'Jordan': ('AFC', 'Asia'),
+    'Korea Republic': ('AFC', 'Asia'),
+    'Mexico': ('CONCACAF', 'Norteamerica'),
+    'Morocco': ('CAF', 'Africa'),
+    'Netherlands': ('UEFA', 'Europa'),
+    'New Zealand': ('OFC', 'Oceania'),
+    'Norway': ('UEFA', 'Europa'),
+    'Panama': ('CONCACAF', 'Centroamerica'),
+    'Paraguay': ('CONMEBOL', 'Sudamerica'),
+    'Portugal': ('UEFA', 'Europa'),
+    'Qatar': ('AFC', 'Asia'),
+    'Saudi Arabia': ('AFC', 'Asia'),
+    'Scotland': ('UEFA', 'Europa'),
+    'Senegal': ('CAF', 'Africa'),
+    'South Africa': ('CAF', 'Africa'),
+    'Spain': ('UEFA', 'Europa'),
+    'Sweden': ('UEFA', 'Europa'),
+    'Switzerland': ('UEFA', 'Europa'),
+    'Tunisia': ('CAF', 'Africa'),
+    'Turkiye': ('UEFA', 'Europa'),
+    'Uruguay': ('CONMEBOL', 'Sudamerica'),
+    'USA': ('CONCACAF', 'Norteamerica'),
+    'Uzbekistan': ('AFC', 'Asia'),
+}
+
+PLANTELES_CONFIRMADOS = {}
+TECNICOS_CONFIRMADOS = {}
+
+
 def agrupar_partidos(partidos):
     secciones = []
     grupos = list('ABCDEFGHIJKL')
@@ -34,6 +89,27 @@ def agrupar_partidos(partidos):
         if items:
             secciones.append({'titulo': fases[fase], 'partidos': items, 'equipos': []})
 
+    return secciones
+
+
+def secciones_prediccion_grupos(predicciones_por_partido):
+    secciones = []
+    for grupo in list('ABCDEFGHIJKL'):
+        equipos = list(Equipo.objects.filter(grupo=grupo).order_by('nombre'))
+        partidos = anotar_predicciones(
+            Partido.objects.filter(fase=Partido.FASE_GRUPOS, grupo=grupo)
+            .select_related('equipo_local', 'equipo_visitante')
+            .order_by('fecha', 'hora', 'numero'),
+            predicciones_por_partido,
+        )
+        secciones.append(
+            {
+                'grupo': grupo,
+                'equipos': equipos,
+                'partidos': partidos,
+                'tabla': tabla_desde_predicciones(equipos, partidos),
+            }
+        )
     return secciones
 
 
@@ -163,6 +239,7 @@ def equipo_slot(equipo, etiqueta=None):
             'nombre': etiqueta or equipo.nombre,
             'bandera': equipo.bandera,
             'bandera_url': equipo.bandera_url,
+            'placeholder': False,
         }
     return {'nombre': etiqueta or 'Clasificado', 'bandera': '🏳', 'bandera_url': ''}
 
@@ -175,9 +252,11 @@ def aplicar_display_partido(partido, local_slot, visitante_slot):
     partido.display_local_nombre = local_slot['nombre']
     partido.display_local_bandera = local_slot['bandera']
     partido.display_local_bandera_url = local_slot['bandera_url']
+    partido.display_local_placeholder = local_slot.get('placeholder', not local_slot.get('bandera_url'))
     partido.display_visitante_nombre = visitante_slot['nombre']
     partido.display_visitante_bandera = visitante_slot['bandera']
     partido.display_visitante_bandera_url = visitante_slot['bandera_url']
+    partido.display_visitante_placeholder = visitante_slot.get('placeholder', not visitante_slot.get('bandera_url'))
     return partido
 
 
@@ -254,6 +333,40 @@ def completar_fase_final(fases_finales, secciones):
     return fases_finales
 
 
+def marcar_fase_final_como_proyeccion(fases_finales):
+    for fase in fases_finales:
+        for partido in fase['partidos']:
+            local = getattr(partido, 'display_local_nombre', '')
+            visitante = getattr(partido, 'display_visitante_nombre', '')
+            if not local and not visitante:
+                continue
+            local_placeholder = getattr(partido, 'display_local_placeholder', False)
+            visitante_placeholder = getattr(partido, 'display_visitante_placeholder', False)
+            if local_placeholder and visitante_placeholder:
+                continue
+            partido.proyeccion_local_nombre = local
+            partido.proyeccion_visitante_nombre = visitante
+            partido.proyeccion_local_bandera = getattr(partido, 'display_local_bandera', '')
+            partido.proyeccion_visitante_bandera = getattr(partido, 'display_visitante_bandera', '')
+            partido.proyeccion_local_bandera_url = getattr(partido, 'display_local_bandera_url', '')
+            partido.proyeccion_visitante_bandera_url = getattr(partido, 'display_visitante_bandera_url', '')
+            partido.proyeccion_local_placeholder = local_placeholder
+            partido.proyeccion_visitante_placeholder = visitante_placeholder
+            for atributo in (
+                'display_local_nombre',
+                'display_visitante_nombre',
+                'display_local_bandera',
+                'display_visitante_bandera',
+                'display_local_bandera_url',
+                'display_visitante_bandera_url',
+                'display_local_placeholder',
+                'display_visitante_placeholder',
+            ):
+                if hasattr(partido, atributo):
+                    delattr(partido, atributo)
+    return fases_finales
+
+
 def resolver_slot_eliminatorio(etiqueta, resultado_slots):
     partes = etiqueta.split()
     if len(partes) == 2 and partes[1].isdigit():
@@ -325,10 +438,18 @@ def home(request):
         }
 
     partidos = anotar_predicciones(partidos, predicciones_por_partido)
-    proximos = anotar_predicciones(
-        Partido.objects.filter(estado=Partido.ESTADO_PROGRAMADO).order_by('fecha', 'hora', 'numero')[:4],
-        predicciones_por_partido,
+    partidos_en_vivo = list(
+        Partido.objects.filter(estado=Partido.ESTADO_EN_VIVO)
+        .select_related('equipo_local', 'equipo_visitante')
+        .order_by('fecha', 'hora', 'numero')
     )
+    cupo_proximos = max(4 - len(partidos_en_vivo), 0)
+    partidos_programados = list(
+        Partido.objects.filter(estado=Partido.ESTADO_PROGRAMADO)
+        .select_related('equipo_local', 'equipo_visitante')
+        .order_by('fecha', 'hora', 'numero')[:cupo_proximos]
+    )
+    proximos = anotar_predicciones(partidos_en_vivo + partidos_programados, predicciones_por_partido)
     resumen = Partido.objects.aggregate(
         total=Count('id'),
         programados=Count('id', filter=Q(estado=Partido.ESTADO_PROGRAMADO)),
@@ -340,6 +461,19 @@ def home(request):
     for seccion in secciones_partidos:
         if seccion.get('equipos'):
             seccion['tabla'] = tabla_desde_resultados(seccion['equipos'], seccion['partidos'])
+    if request.user.is_authenticated:
+        fases_proyectadas = [seccion for seccion in secciones_partidos if not seccion.get('equipos')]
+        completar_fase_final(fases_proyectadas, secciones_prediccion_grupos(predicciones_por_partido))
+        marcar_fase_final_como_proyeccion(fases_proyectadas)
+
+    partidos_calendario = Partido.objects.select_related('equipo_local', 'equipo_visitante').order_by('fecha')
+    calendario_dias = []
+    fechas_vistas = set()
+    for partido in partidos_calendario:
+        if partido.fecha not in fechas_vistas:
+            fechas_vistas.add(partido.fecha)
+            calendario_dias.append({'fecha': partido.fecha, 'partidos': []})
+        calendario_dias[-1]['partidos'].append(partido)
 
     contexto = {
         'partidos': partidos,
@@ -357,8 +491,96 @@ def home(request):
             'q': busqueda,
             'favoritos': solo_favoritos,
         },
+        'calendario_dias': calendario_dias,
     }
     return render(request, 'core/home.html', contexto)
+
+
+def partido_detalle(request, partido_id):
+    partido = get_object_or_404(
+        Partido.objects.select_related('equipo_local', 'equipo_visitante'),
+        id=partido_id,
+    )
+    favorito = False
+    prediccion = None
+    if request.user.is_authenticated:
+        favorito = PartidoFavorito.objects.filter(usuario=request.user, partido=partido).exists()
+        prediccion = Prediccion.objects.filter(usuario=request.user, partido=partido).first()
+    partido.prediccion_usuario = prediccion
+    tabla_grupo = []
+    proximos_grupo = []
+
+    if partido.grupo:
+        partidos_grupo = list(
+            Partido.objects.filter(fase=Partido.FASE_GRUPOS, grupo=partido.grupo)
+            .select_related('equipo_local', 'equipo_visitante')
+            .order_by('fecha', 'hora', 'numero')
+        )
+        equipos_grupo = list(Equipo.objects.filter(grupo=partido.grupo).order_by('nombre'))
+        tabla_grupo = tabla_desde_resultados(equipos_grupo, partidos_grupo)
+        proximos_grupo = [
+            item
+            for item in partidos_grupo
+            if item.id != partido.id and item.estado == Partido.ESTADO_PROGRAMADO
+        ][:4]
+
+    return render(
+        request,
+        'core/partido_detalle.html',
+        {
+            'partido': partido,
+            'favorito': favorito,
+            'tabla_grupo': tabla_grupo,
+            'proximos_grupo': proximos_grupo,
+        },
+    )
+
+
+def seleccion_detalle(request, equipo_id):
+    equipo = get_object_or_404(Equipo, id=equipo_id)
+    partidos = list(
+        Partido.objects.filter(Q(equipo_local=equipo) | Q(equipo_visitante=equipo))
+        .select_related('equipo_local', 'equipo_visitante')
+        .order_by('fecha', 'hora', 'numero')
+    )
+
+    predicciones_por_partido = {}
+    favoritos_ids = set()
+    if request.user.is_authenticated:
+        favoritos_ids = set(
+            PartidoFavorito.objects.filter(usuario=request.user).values_list('partido_id', flat=True)
+        )
+        predicciones_por_partido = {
+            prediccion.partido_id: prediccion
+            for prediccion in Prediccion.objects.filter(usuario=request.user)
+        }
+    partidos = anotar_predicciones(partidos, predicciones_por_partido)
+
+    equipos_grupo = list(Equipo.objects.filter(grupo=equipo.grupo).order_by('nombre'))
+    partidos_grupo = list(
+        Partido.objects.filter(fase=Partido.FASE_GRUPOS, grupo=equipo.grupo)
+        .select_related('equipo_local', 'equipo_visitante')
+        .order_by('fecha', 'hora', 'numero')
+    )
+    tabla_grupo = tabla_desde_resultados(equipos_grupo, partidos_grupo) if equipo.grupo else []
+    fila_equipo = next((fila for fila in tabla_grupo if fila['equipo'].id == equipo.id), None)
+    confederacion, region = CONFEDERACIONES.get(equipo.nombre, ('A confirmar', 'A confirmar'))
+
+    return render(
+        request,
+        'core/seleccion_detalle.html',
+        {
+            'equipo': equipo,
+            'partidos': partidos,
+            'favoritos_ids': favoritos_ids,
+            'tabla_grupo': tabla_grupo,
+            'fila_equipo': fila_equipo,
+            'confederacion': confederacion,
+            'region': region,
+            'tecnico': TECNICOS_CONFIRMADOS.get(equipo.nombre, 'A confirmar'),
+            'convocados': PLANTELES_CONFIRMADOS.get(equipo.nombre, []),
+        },
+    )
 
 
 def predicciones(request):
@@ -373,24 +595,11 @@ def predicciones(request):
             for prediccion in Prediccion.objects.filter(usuario=request.user)
         }
 
-    secciones = []
-    for grupo in list('ABCDEFGHIJKL'):
-        equipos = list(Equipo.objects.filter(grupo=grupo).order_by('nombre'))
-        partidos = anotar_predicciones(
-            Partido.objects.filter(fase=Partido.FASE_GRUPOS, grupo=grupo)
-            .select_related('equipo_local', 'equipo_visitante')
-            .order_by('fecha', 'hora', 'numero'),
-            predicciones_por_partido,
-        )
-        if equipos or partidos:
-            secciones.append(
-                {
-                    'grupo': grupo,
-                    'equipos': equipos,
-                    'partidos': partidos,
-                    'tabla': tabla_desde_predicciones(equipos, partidos),
-                }
-            )
+    secciones = [
+        seccion
+        for seccion in secciones_prediccion_grupos(predicciones_por_partido)
+        if seccion['equipos'] or seccion['partidos']
+    ]
 
     fases_finales = []
     fases = dict(Partido.FASES)
@@ -531,3 +740,63 @@ def registro(request):
         form = RegistroUsuarioForm()
 
     return render(request, 'core/registro.html', {'form': form})
+
+
+def almanaque(request):
+    grupo = request.GET.get('grupo', '')
+    fase = request.GET.get('fase', '')
+    busqueda = request.GET.get('q', '').strip()
+
+    partidos = Partido.objects.select_related('equipo_local', 'equipo_visitante')
+
+    if grupo:
+        partidos = partidos.filter(grupo=grupo)
+    if fase:
+        partidos = partidos.filter(fase=fase)
+    if busqueda:
+        partidos = partidos.filter(
+            Q(equipo_local__nombre__icontains=busqueda)
+            | Q(equipo_visitante__nombre__icontains=busqueda)
+            | Q(estadio__icontains=busqueda)
+            | Q(ciudad__icontains=busqueda)
+        )
+
+    predicciones_por_partido = {}
+    favoritos_ids = set()
+    if request.user.is_authenticated:
+        favoritos_ids = set(
+            PartidoFavorito.objects.filter(usuario=request.user).values_list('partido_id', flat=True)
+        )
+        predicciones_por_partido = {
+            prediccion.partido_id: prediccion
+            for prediccion in Prediccion.objects.filter(usuario=request.user)
+        }
+
+    partidos = anotar_predicciones(partidos, predicciones_por_partido)
+    if request.user.is_authenticated:
+        fases_proyectadas = [
+            {'partidos': [partido for partido in partidos if partido.fase != Partido.FASE_GRUPOS]}
+        ]
+        completar_fase_final(fases_proyectadas, secciones_prediccion_grupos(predicciones_por_partido))
+        marcar_fase_final_como_proyeccion(fases_proyectadas)
+
+    calendario_dias = []
+    fechas_vistas = set()
+    for partido in partidos:
+        if partido.fecha not in fechas_vistas:
+            fechas_vistas.add(partido.fecha)
+            calendario_dias.append({'fecha': partido.fecha, 'partidos': []})
+        calendario_dias[-1]['partidos'].append(partido)
+
+    contexto = {
+        'calendario_dias': calendario_dias,
+        'favoritos_ids': favoritos_ids,
+        'grupos': list('ABCDEFGHIJKL'),
+        'fases': Partido.FASES,
+        'filtros': {
+            'grupo': grupo,
+            'fase': fase,
+            'q': busqueda,
+        },
+    }
+    return render(request, 'core/almanaque.html', contexto)

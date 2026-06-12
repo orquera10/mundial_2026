@@ -104,6 +104,11 @@ def team_name(match, side):
     return first_present(team.get('name'), team.get('shortName'), match.get(f'{side}_team'))
 
 
+def team_crest(match, side):
+    team = match.get(f'{side}Team') or {}
+    return team.get('crest') or ''
+
+
 def same_match(partido, match):
     numero = match_number(match)
     if numero == partido.numero:
@@ -148,6 +153,23 @@ def extract_utc_datetime(match):
         return None
 
 
+def parse_api_datetime(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError:
+        return None
+
+
+def main_referee(match):
+    referees = match.get('referees') or []
+    if not referees:
+        return None
+    referee = next((item for item in referees if item.get('type') == 'REFEREE'), referees[0])
+    return referee
+
+
 def normalize_estado(match):
     estado_raw = str(match.get('status') or match.get('state') or '').upper()
     if any(token in estado_raw for token in ('LIVE', 'IN_PLAY', 'PAUSED', 'HALF_TIME')):
@@ -167,6 +189,28 @@ def sync_match_result(partido, matches=None):
             continue
 
         update_fields = []
+        mapping = {
+            'football_data_id': match.get('id'),
+            'jornada': match.get('matchday'),
+            'etapa_api': match.get('stage') or '',
+            'grupo_api': match.get('group') or '',
+            'escudo_local_url': team_crest(match, 'home'),
+            'escudo_visitante_url': team_crest(match, 'away'),
+        }
+        referee = main_referee(match)
+        if referee:
+            mapping['arbitro'] = referee.get('name') or ''
+            mapping['arbitro_nacionalidad'] = referee.get('nationality') or ''
+
+        last_updated = parse_api_datetime(match.get('lastUpdated'))
+        if last_updated:
+            mapping['evento_actualizado'] = last_updated
+
+        for field, value in mapping.items():
+            if value is not None and getattr(partido, field) != value:
+                setattr(partido, field, value)
+                update_fields.append(field)
+
         estado = normalize_estado(match)
         if estado and partido.estado != estado:
             partido.estado = estado
@@ -205,3 +249,46 @@ def sync_matches_results(matches=None, date_from=None, date_to=None):
         if sync_match_result(partido, matches):
             actualizados += 1
     return actualizados
+
+
+def partidos_listos_para_sincronizar(now=None, follow_hours=12):
+    now = now or timezone.localtime(timezone.now())
+    inicio_ventana = now - timedelta(hours=follow_hours)
+    partidos = []
+
+    for partido in Partido.objects.exclude(estado=Partido.ESTADO_FINALIZADO):
+        inicio = partido.inicio_argentina
+        if inicio and inicio_ventana <= inicio <= now:
+            partidos.append(partido)
+
+    return partidos
+
+
+def sync_due_matches_results(now=None, follow_hours=12):
+    partidos = partidos_listos_para_sincronizar(
+        now=now,
+        follow_hours=follow_hours,
+    )
+    if not partidos:
+        return {'consultados': 0, 'actualizados': 0, 'mensaje': 'Sin partidos listos para consultar.'}
+
+    fechas = [
+        partido.inicio_argentina.astimezone(ZoneInfo('UTC')).date()
+        for partido in partidos
+        if partido.inicio_argentina
+    ]
+    date_from = (min(fechas) - timedelta(days=1)).isoformat()
+    date_to = (max(fechas) + timedelta(days=1)).isoformat()
+    matches = fetch_football_data_range(date_from, date_to)
+
+    actualizados = 0
+    for partido in partidos:
+        if sync_match_result(partido, matches):
+            actualizados += 1
+
+    return {
+        'consultados': len(partidos),
+        'actualizados': actualizados,
+        'date_from': date_from,
+        'date_to': date_to,
+    }

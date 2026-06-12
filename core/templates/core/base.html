@@ -428,6 +428,7 @@
             </summary>
             <nav class="nav-panel" aria-label="Menu principal">
                 <a href="{% url 'core:predicciones' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-bullseye"></i></span>Predicciones</a>
+                <a href="{% url 'core:almanaque' %}"><span class="icon light" aria-hidden="true"><i class="bi bi-calendar-week"></i></span>Almanaque</a>
             {% if user.is_authenticated %}
                 <div class="profile-pill">
                     <span class="profile-icon" aria-hidden="true">{{ user.username|first|upper }}</span>

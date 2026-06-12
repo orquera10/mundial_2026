@@ -129,12 +129,69 @@ FLAG_CODES = {
     'Uzbekistan': 'uz',
 }
 
+TEAM_COLORS = {
+    'Algeria': ('#006233', '#d21034'),
+    'Argentina': ('#75aadb', '#f6b40e'),
+    'Australia': ('#00843d', '#ffcd00'),
+    'Austria': ('#ed2939', '#ffffff'),
+    'Belgium': ('#fae042', '#ed2939'),
+    'Bosnia and Herzegovina': ('#002f6c', '#fcd116'),
+    'Brazil': ('#009c3b', '#ffdf00'),
+    'Cabo Verde': ('#003893', '#cf2027'),
+    'Canada': ('#d52b1e', '#ffffff'),
+    'Colombia': ('#fcd116', '#003893'),
+    'Congo DR': ('#007fff', '#f7d618'),
+    "Cote d'Ivoire": ('#f77f00', '#009e60'),
+    'Croatia': ('#ff0000', '#171796'),
+    'Curacao': ('#002b7f', '#f9e814'),
+    'Czechia': ('#d7141a', '#11457e'),
+    'Ecuador': ('#ffdd00', '#034ea2'),
+    'Egypt': ('#ce1126', '#000000'),
+    'England': ('#cf142b', '#ffffff'),
+    'France': ('#0055a4', '#ef4135'),
+    'Germany': ('#dd0000', '#ffce00'),
+    'Ghana': ('#006b3f', '#fcd116'),
+    'Haiti': ('#00209f', '#d21034'),
+    'IR Iran': ('#239f40', '#da0000'),
+    'Iraq': ('#ce1126', '#000000'),
+    'Japan': ('#bc002d', '#ffffff'),
+    'Jordan': ('#ce1126', '#007a3d'),
+    'Korea Republic': ('#c60c30', '#003478'),
+    'Mexico': ('#006847', '#ce1126'),
+    'Morocco': ('#c1272d', '#006233'),
+    'Netherlands': ('#ff4f00', '#21468b'),
+    'New Zealand': ('#00247d', '#cc142b'),
+    'Norway': ('#ba0c2f', '#00205b'),
+    'Panama': ('#005293', '#d21034'),
+    'Paraguay': ('#0038a8', '#d52b1e'),
+    'Portugal': ('#006600', '#ff0000'),
+    'Qatar': ('#8a1538', '#ffffff'),
+    'Saudi Arabia': ('#006c35', '#ffffff'),
+    'Scotland': ('#005eb8', '#ffffff'),
+    'Senegal': ('#00853f', '#fdef42'),
+    'South Africa': ('#007a4d', '#ffb612'),
+    'Spain': ('#aa151b', '#f1bf00'),
+    'Sweden': ('#006aa7', '#fecc00'),
+    'Switzerland': ('#d52b1e', '#ffffff'),
+    'Tunisia': ('#e70013', '#ffffff'),
+    'Turkiye': ('#e30a17', '#ffffff'),
+    'Uruguay': ('#0038a8', '#fcd116'),
+    'USA': ('#3c3b6e', '#b22234'),
+    'Uzbekistan': ('#1eb6e7', '#009b3a'),
+}
+
+DEFAULT_TEAM_COLORS = ('#004b8d', '#007852')
+
 
 def bandera_url(nombre):
     codigo = FLAG_CODES.get(nombre)
     if not codigo:
         return ''
     return f'https://flagcdn.com/w80/{codigo}.png'
+
+
+def colores_equipo(nombre):
+    return TEAM_COLORS.get(nombre, DEFAULT_TEAM_COLORS)
 
 
 class Equipo(models.Model):
@@ -154,6 +211,14 @@ class Equipo(models.Model):
     @property
     def bandera_url(self):
         return bandera_url(self.nombre)
+
+    @property
+    def color_principal(self):
+        return colores_equipo(self.nombre)[0]
+
+    @property
+    def color_secundario(self):
+        return colores_equipo(self.nombre)[1]
 
 
 class Partido(models.Model):
@@ -213,6 +278,15 @@ class Partido(models.Model):
     canales_argentina = models.CharField(max_length=180, blank=True)
     streaming_argentina = models.CharField(max_length=180, blank=True)
     transmision_notas = models.CharField(max_length=220, blank=True)
+    football_data_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
+    jornada = models.PositiveSmallIntegerField(null=True, blank=True)
+    etapa_api = models.CharField(max_length=60, blank=True)
+    grupo_api = models.CharField(max_length=60, blank=True)
+    arbitro = models.CharField(max_length=100, blank=True)
+    arbitro_nacionalidad = models.CharField(max_length=80, blank=True)
+    evento_actualizado = models.DateTimeField(null=True, blank=True)
+    escudo_local_url = models.URLField(blank=True)
+    escudo_visitante_url = models.URLField(blank=True)
 
     class Meta:
         ordering = ['fecha', 'hora', 'numero']
@@ -243,6 +317,22 @@ class Partido(models.Model):
     @property
     def bandera_visitante_url(self):
         return bandera_url(self.visitante_nombre)
+
+    @property
+    def color_local(self):
+        return colores_equipo(self.local_nombre)[0]
+
+    @property
+    def color_visitante(self):
+        return colores_equipo(self.visitante_nombre)[0]
+
+    @property
+    def color_local_secundario(self):
+        return colores_equipo(self.local_nombre)[1]
+
+    @property
+    def color_visitante_secundario(self):
+        return colores_equipo(self.visitante_nombre)[1]
 
     @property
     def horario(self):
@@ -312,3 +402,37 @@ class Prediccion(models.Model):
 
     def __str__(self):
         return f'{self.usuario}: {self.partido} {self.goles_local}-{self.goles_visitante}'
+
+    @staticmethod
+    def signo(goles_local, goles_visitante):
+        if goles_local > goles_visitante:
+            return 'local'
+        if goles_local < goles_visitante:
+            return 'visitante'
+        return 'empate'
+
+    @property
+    def comparacion_estado(self):
+        if self.partido.estado != Partido.ESTADO_FINALIZADO:
+            return ''
+        if self.partido.goles_local is None or self.partido.goles_visitante is None:
+            return ''
+        if (
+            self.goles_local == self.partido.goles_local
+            and self.goles_visitante == self.partido.goles_visitante
+        ):
+            return 'exacta'
+        predicho = self.signo(self.goles_local, self.goles_visitante)
+        real = self.signo(self.partido.goles_local, self.partido.goles_visitante)
+        if predicho == real:
+            return 'ganador'
+        return 'fallida'
+
+    @property
+    def comparacion_label(self):
+        etiquetas = {
+            'exacta': 'Resultado exacto',
+            'ganador': 'Ganador acertado',
+            'fallida': 'No acertada',
+        }
+        return etiquetas.get(self.comparacion_estado, 'Prediccion guardada')

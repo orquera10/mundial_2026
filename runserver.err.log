@@ -1,1 +1,25 @@
-[12/Jun/2026 09:10:36] "GET /login/ HTTP/1.1" 400 143
+Watching for file changes with StatReloader
+[12/Jun/2026 10:09:21] "GET / HTTP/1.1" 200 419786
+[12/Jun/2026 10:09:21,258] - Broken pipe from ('127.0.0.1', 52364)
+[12/Jun/2026 10:09:32] "GET /api/partidos-vivo/ HTTP/1.1" 200 2
+[12/Jun/2026 10:10:32] "GET /api/partidos-vivo/ HTTP/1.1" 200 2
+[12/Jun/2026 10:10:45] "GET / HTTP/1.1" 200 419786
+[12/Jun/2026 10:10:45] "GET /static/core/img/logos/logoMundial.webp HTTP/1.1" 200 40534
+[12/Jun/2026 10:10:46] "GET /api/partidos-vivo/ HTTP/1.1" 200 2
+Not Found: /favicon.ico
+[12/Jun/2026 10:10:46] "GET /favicon.ico HTTP/1.1" 404 6371
+[12/Jun/2026 10:10:53] "GET /selecciones/5/ HTTP/1.1" 200 67798
+[12/Jun/2026 10:11:28] "GET / HTTP/1.1" 200 419786
+[12/Jun/2026 10:11:28] "GET /api/partidos-vivo/ HTTP/1.1" 200 2
+[12/Jun/2026 10:11:32] "GET /api/partidos-vivo/ HTTP/1.1" 200 2
+[12/Jun/2026 10:11:35] "GET / HTTP/1.1" 200 419786
+[12/Jun/2026 10:11:35] "GET /api/partidos-vivo/ HTTP/1.1" 200 2
+[12/Jun/2026 10:11:41] "GET / HTTP/1.1" 200 419786
+[12/Jun/2026 10:11:41] "GET /static/core/img/logos/logoMundial.webp HTTP/1.1" 200 40534
+[12/Jun/2026 10:11:41] "GET /api/partidos-vivo/ HTTP/1.1" 200 2
+Not Found: /favicon.ico
+[12/Jun/2026 10:11:42] "GET /favicon.ico HTTP/1.1" 404 6371
+[12/Jun/2026 10:11:53] "GET /selecciones/37/ HTTP/1.1" 200 68433
+[12/Jun/2026 10:12:24] "GET / HTTP/1.1" 200 419786
+[12/Jun/2026 10:12:24] "GET /api/partidos-vivo/ HTTP/1.1" 200 2
+[12/Jun/2026 10:12:32] "GET /api/partidos-vivo/ HTTP/1.1" 200 2

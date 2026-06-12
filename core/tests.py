@@ -11,6 +11,7 @@ class MundialHomeTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         call_command('seed_mundial_2026', verbosity=0)
+        call_command('import_squad_data', verbosity=0)
 
     def test_fixture_inicial_carga_104_partidos(self):
         self.assertEqual(Partido.objects.count(), 104)
@@ -57,11 +58,36 @@ class MundialHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Mexico')
         self.assertContains(response, 'CONCACAF')
-        self.assertContains(response, 'Tecnico')
-        self.assertContains(response, 'Lista de 26 convocados a confirmar')
+        self.assertContains(response, 'Javier Aguirre')
+        self.assertContains(response, 'Raul Rangel')
+        self.assertContains(response, 'CD Guadalajara')
+        self.assertContains(response, 'squad-shirt')
+        self.assertContains(response, 'Camiseta 1')
+        self.assertContains(response, 'class="portero"')
+        self.assertContains(response, 'class="defensa"')
+        self.assertContains(response, 'class="mediocentro"')
+        self.assertContains(response, 'class="delantero"')
+        self.assertLess(
+            response.content.decode().find('class="portero"'),
+            response.content.decode().find('class="defensa"'),
+        )
         self.assertContains(response, 'Partidos')
         self.assertContains(response, 'mini-flag')
         self.assertContains(response, 'match-expanded')
+
+    def test_nombre_de_camiseta_no_arrastra_apellido_pegado(self):
+        argentina = Equipo.objects.get(nombre='Argentina')
+
+        response = self.client.get(f'/selecciones/{argentina.id}/')
+
+        self.assertContains(response, 'Enzo Fernandez')
+        self.assertContains(response, 'E. Fernandez')
+        self.assertNotContains(response, 'Ndeze. Fernandez')
+        self.assertContains(response, 'Lisandro Martinez')
+        self.assertContains(response, 'Martinez')
+        self.assertNotContains(response, 'Camiseta 6 Nez')
+        self.assertContains(response, 'Nico Paz')
+        self.assertNotContains(response, 'Neznico Paz')
 
     def test_menu_y_pagina_paises_listan_selecciones(self):
         response = self.client.get('/')
@@ -114,6 +140,8 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, '1 partido')
         self.assertContains(response, 'Mexico')
         self.assertContains(response, 'South Africa')
+        self.assertContains(response, f'href="/selecciones/{partido.equipo_local_id}/"')
+        self.assertContains(response, f'href="/selecciones/{partido.equipo_visitante_id}/"')
 
     def test_home_muestra_filtros_compactados(self):
         response = self.client.get('/')

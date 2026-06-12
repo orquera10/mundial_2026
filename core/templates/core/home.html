@@ -263,10 +263,18 @@
         font-weight: 900;
     }
 
-    .favorite-team span:last-child {
+    .favorite-team span:last-child,
+    .favorite-team a {
+        min-width: 0;
+        color: inherit;
+        text-decoration: none;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .favorite-team a:hover {
+        text-decoration: underline;
     }
 
     .favorite-team.visitor {

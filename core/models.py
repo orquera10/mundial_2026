@@ -197,6 +197,8 @@ def colores_equipo(nombre):
 class Equipo(models.Model):
     nombre = models.CharField(max_length=80, unique=True)
     grupo = models.CharField(max_length=1, blank=True)
+    codigo_fifa = models.CharField(max_length=6, blank=True)
+    tecnico = models.CharField(max_length=120, blank=True)
 
     class Meta:
         ordering = ['grupo', 'nombre']
@@ -219,6 +221,28 @@ class Equipo(models.Model):
     @property
     def color_secundario(self):
         return colores_equipo(self.nombre)[1]
+
+
+class JugadorSeleccion(models.Model):
+    equipo = models.ForeignKey(Equipo, on_delete=models.CASCADE, related_name='jugadores')
+    orden = models.PositiveSmallIntegerField()
+    nombre = models.CharField(max_length=120)
+    camiseta = models.CharField(max_length=80, blank=True)
+    posicion = models.CharField(max_length=40)
+    fecha_nacimiento = models.CharField(max_length=12, blank=True)
+    club = models.CharField(max_length=140, blank=True)
+    altura_cm = models.PositiveSmallIntegerField(null=True, blank=True)
+    internacionalidades = models.PositiveSmallIntegerField(null=True, blank=True)
+    goles = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['equipo__nombre', 'orden']
+        constraints = [
+            models.UniqueConstraint(fields=['equipo', 'orden'], name='jugador_unico_por_equipo_y_orden'),
+        ]
+
+    def __str__(self):
+        return f'{self.nombre} ({self.equipo})'
 
 
 class Partido(models.Model):

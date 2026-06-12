@@ -18,7 +18,11 @@
                         {{ partido.bandera_local }}
                     {% endif %}
                 </span>
-                <span>{{ partido.local_nombre }}</span>
+                {% if partido.equipo_local_id %}
+                    <a href="{% url 'core:seleccion_detalle' partido.equipo_local_id %}">{{ partido.local_nombre }}</a>
+                {% else %}
+                    <span>{{ partido.local_nombre }}</span>
+                {% endif %}
             </span>
             <strong class="favorite-score">{{ partido.marcador }}</strong>
             <span class="favorite-team visitor">
@@ -29,7 +33,11 @@
                         {{ partido.bandera_visitante }}
                     {% endif %}
                 </span>
-                <span>{{ partido.visitante_nombre }}</span>
+                {% if partido.equipo_visitante_id %}
+                    <a href="{% url 'core:seleccion_detalle' partido.equipo_visitante_id %}">{{ partido.visitante_nombre }}</a>
+                {% else %}
+                    <span>{{ partido.visitante_nombre }}</span>
+                {% endif %}
             </span>
         </div>
 

@@ -545,7 +545,7 @@ def partido_detalle(request, partido_id):
 
 
 def seleccion_detalle(request, equipo_id):
-    equipo = get_object_or_404(Equipo, id=equipo_id)
+    equipo = get_object_or_404(Equipo.objects.prefetch_related('jugadores'), id=equipo_id)
     partidos = list(
         Partido.objects.filter(Q(equipo_local=equipo) | Q(equipo_visitante=equipo))
         .select_related('equipo_local', 'equipo_visitante')
@@ -574,6 +574,22 @@ def seleccion_detalle(request, equipo_id):
     fila_equipo = next((fila for fila in tabla_grupo if fila['equipo'].id == equipo.id), None)
     confederacion, region = CONFEDERACIONES.get(equipo.nombre, ('A confirmar', 'A confirmar'))
 
+    orden_posiciones = {
+        'Portero': (1, 'portero'),
+        'Defensa': (2, 'defensa'),
+        'Mediocentro': (3, 'mediocentro'),
+        'Delantero': (4, 'delantero'),
+    }
+    convocados = sorted(
+        equipo.jugadores.all(),
+        key=lambda jugador: (orden_posiciones.get(jugador.posicion, (9, ''))[0], jugador.orden),
+    )
+    for jugador in convocados:
+        jugador.posicion_clase = orden_posiciones.get(jugador.posicion, (9, 'otro'))[1]
+        nombre_camiseta = jugador.camiseta or jugador.nombre
+        jugador.camiseta_larga = len(nombre_camiseta) > 12
+        jugador.camiseta_muy_larga = len(nombre_camiseta) > 16
+
     return render(
         request,
         'core/seleccion_detalle.html',
@@ -585,8 +601,9 @@ def seleccion_detalle(request, equipo_id):
             'fila_equipo': fila_equipo,
             'confederacion': confederacion,
             'region': region,
-            'tecnico': TECNICOS_CONFIRMADOS.get(equipo.nombre, 'A confirmar'),
-            'convocados': PLANTELES_CONFIRMADOS.get(equipo.nombre, []),
+            'codigo_fifa': equipo.codigo_fifa,
+            'tecnico': equipo.tecnico or TECNICOS_CONFIRMADOS.get(equipo.nombre, 'A confirmar'),
+            'convocados': convocados or PLANTELES_CONFIRMADOS.get(equipo.nombre, []),
         },
     )
 

@@ -91,6 +91,81 @@
         font-weight: 900;
     }
 
+    .live-panel {
+        display: grid;
+        gap: 0.75rem;
+        padding: 0.85rem;
+        border: 1px solid color-mix(in srgb, var(--team-local, var(--blue)) 18%, var(--line));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.78);
+    }
+
+    .live-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.65rem;
+        flex-wrap: wrap;
+    }
+
+    .live-panel-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-weight: 900;
+    }
+
+    .live-pulse {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: #e11d48;
+        box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.5);
+        animation: livePulse 1.6s infinite;
+    }
+
+    .live-sync {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .live-data-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.55rem;
+    }
+
+    .live-data-item {
+        min-width: 0;
+        padding: 0.65rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .live-data-item strong {
+        display: block;
+        color: var(--muted);
+        font-size: 0.72rem;
+        margin-bottom: 0.14rem;
+    }
+
+    .live-data-item span {
+        display: block;
+        overflow-wrap: anywhere;
+        font-weight: 900;
+    }
+
+    @keyframes livePulse {
+        70% {
+            box-shadow: 0 0 0 0.45rem rgba(225, 29, 72, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(225, 29, 72, 0);
+        }
+    }
+
     .detail-grid {
         display: grid;
         grid-template-columns: 1.1fr 0.9fr;
@@ -353,17 +428,21 @@
         .detail-team {
             font-size: 0.9rem;
         }
+
+        .live-data-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<section class="detail-hero" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }}; --team-local-third: {{ partido.color_local_terciario }}; --team-visitor-third: {{ partido.color_visitante_terciario }};">
+<section class="detail-hero" data-live-detail data-partido-id="{{ partido.id }}" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }}; --team-local-third: {{ partido.color_local_terciario }}; --team-visitor-third: {{ partido.color_visitante_terciario }};">
     <a class="back-link" href="{{ volver_url }}"><i class="bi bi-chevron-left" aria-hidden="true"></i>Volver</a>
     <div class="detail-kicker">
         <span><i class="bi bi-hash" aria-hidden="true"></i> Partido {{ partido.numero }}</span>
         <span>{{ partido.get_fase_display }}{% if partido.grupo %} - Grupo {{ partido.grupo }}{% endif %}</span>
-        <span>{{ partido.get_estado_display }}</span>
+        <span data-live-status>{{ partido.get_estado_display }}</span>
     </div>
     <div class="detail-scoreboard">
         <div class="detail-team">
@@ -380,7 +459,7 @@
                 <span>{{ partido.local_nombre }}</span>
             {% endif %}
         </div>
-        <div class="detail-score">{{ partido.marcador }}</div>
+        <div class="detail-score" data-live-score>{{ partido.marcador }}</div>
         <div class="detail-team">
             <span class="detail-flag" aria-hidden="true">
                 {% if partido.bandera_visitante_url %}
@@ -396,6 +475,53 @@
             {% endif %}
         </div>
     </div>
+    {% if partido.estado == 'en_vivo' or partido.evento_actualizado or partido.football_data_id or partido.jornada or partido.etapa_api or partido.grupo_api %}
+        <div class="live-panel">
+            <div class="live-panel-head">
+                <span class="live-panel-title">
+                    {% if partido.estado == 'en_vivo' %}<span class="live-pulse" aria-hidden="true"></span>{% endif %}
+                    Seguimiento del partido
+                </span>
+                <span class="live-sync" data-live-updated>
+                    {% if partido.evento_actualizado %}
+                        Actualizado {{ partido.evento_actualizado|date:"d/m/Y H:i" }}
+                    {% else %}
+                        Esperando datos oficiales
+                    {% endif %}
+                </span>
+            </div>
+            <div class="live-data-grid">
+                <div class="live-data-item">
+                    <strong>Estado</strong>
+                    <span data-live-status-card>{{ partido.get_estado_display }}</span>
+                </div>
+                <div class="live-data-item">
+                    <strong>Jornada</strong>
+                    <span data-live-matchday>{{ partido.jornada|default:"A confirmar" }}</span>
+                </div>
+                <div class="live-data-item">
+                    <strong>Etapa API</strong>
+                    <span data-live-stage>{{ partido.etapa_api|default:partido.get_fase_display }}</span>
+                </div>
+                <div class="live-data-item">
+                    <strong>Grupo API</strong>
+                    <span data-live-group>{{ partido.grupo_api|default:"A confirmar" }}</span>
+                </div>
+                {% if partido.arbitro %}
+                    <div class="live-data-item">
+                        <strong>Arbitro</strong>
+                        <span data-live-referee>{{ partido.arbitro }}{% if partido.arbitro_nacionalidad %} ({{ partido.arbitro_nacionalidad }}){% endif %}</span>
+                    </div>
+                {% endif %}
+                {% if partido.football_data_id %}
+                    <div class="live-data-item">
+                        <strong>ID Football Data</strong>
+                        <span>{{ partido.football_data_id }}</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
 </section>
 
 <div class="detail-grid" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }}; --team-local-third: {{ partido.color_local_terciario }}; --team-visitor-third: {{ partido.color_visitante_terciario }};">
@@ -547,4 +673,80 @@
         {% endif %}
     </aside>
 </div>
+
+{% if partido.estado == 'en_vivo' %}
+<script>
+    (function () {
+        const root = document.querySelector('[data-live-detail]');
+        if (!root) {
+            return;
+        }
+        const partidoId = Number(root.dataset.partidoId);
+        const score = root.querySelector('[data-live-score]');
+        const statusLabels = root.querySelectorAll('[data-live-status], [data-live-status-card]');
+        const updated = root.querySelector('[data-live-updated]');
+        const matchday = root.querySelector('[data-live-matchday]');
+        const stage = root.querySelector('[data-live-stage]');
+        const group = root.querySelector('[data-live-group]');
+        const referee = root.querySelector('[data-live-referee]');
+
+        function formatUpdated(value) {
+            if (!value) {
+                return 'Esperando datos oficiales';
+            }
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return 'Actualizado recientemente';
+            }
+            return 'Actualizado ' + date.toLocaleString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        }
+
+        function updateLiveDetail() {
+            fetch('{% url 'core:api_partidos_vivo' %}', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+                .then((response) => response.ok ? response.json() : [])
+                .then((partidos) => {
+                    const partido = partidos.find((item) => item.id === partidoId);
+                    if (!partido) {
+                        return;
+                    }
+                    if (score) {
+                        score.textContent = partido.marcador;
+                    }
+                    statusLabels.forEach((label) => {
+                        label.textContent = partido.estado_display;
+                    });
+                    if (updated) {
+                        updated.textContent = formatUpdated(partido.evento_actualizado);
+                    }
+                    if (matchday) {
+                        matchday.textContent = partido.jornada || 'A confirmar';
+                    }
+                    if (stage) {
+                        stage.textContent = partido.etapa_api || stage.textContent;
+                    }
+                    if (group) {
+                        group.textContent = partido.grupo_api || 'A confirmar';
+                    }
+                    if (referee && partido.arbitro) {
+                        referee.textContent = partido.arbitro_nacionalidad
+                            ? `${partido.arbitro} (${partido.arbitro_nacionalidad})`
+                            : partido.arbitro;
+                    }
+                })
+                .catch(() => {});
+        }
+
+        updateLiveDetail();
+        window.setInterval(updateLiveDetail, 60000);
+    })();
+</script>
+{% endif %}
 {% endblock %}

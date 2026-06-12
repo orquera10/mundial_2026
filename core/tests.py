@@ -370,24 +370,65 @@ class MundialHomeTests(TestCase):
         partido.estado = Partido.ESTADO_EN_VIVO
         partido.goles_local = 0
         partido.goles_visitante = 1
-        partido.save(update_fields=['estado', 'goles_local', 'goles_visitante'])
+        partido.jornada = 1
+        partido.etapa_api = 'GROUP_STAGE'
+        partido.grupo_api = 'GROUP_A'
+        partido.arbitro = 'Wilton Sampaio'
+        partido.arbitro_nacionalidad = 'Brazil'
+        partido.football_data_id = 537327
+        partido.save(
+            update_fields=[
+                'estado',
+                'goles_local',
+                'goles_visitante',
+                'jornada',
+                'etapa_api',
+                'grupo_api',
+                'arbitro',
+                'arbitro_nacionalidad',
+                'football_data_id',
+            ]
+        )
 
         response = self.client.get('/api/partidos-vivo/')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.json(),
-            [
-                {
-                    'id': partido.id,
-                    'goles_local': 0,
-                    'goles_visitante': 1,
-                    'marcador': '0 - 1',
-                    'estado': Partido.ESTADO_EN_VIVO,
-                    'estado_display': 'En vivo',
-                }
-            ],
-        )
+        data = response.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['id'], partido.id)
+        self.assertEqual(data[0]['goles_local'], 0)
+        self.assertEqual(data[0]['goles_visitante'], 1)
+        self.assertEqual(data[0]['marcador'], '0 - 1')
+        self.assertEqual(data[0]['estado'], Partido.ESTADO_EN_VIVO)
+        self.assertEqual(data[0]['estado_display'], 'En vivo')
+        self.assertEqual(data[0]['jornada'], 1)
+        self.assertEqual(data[0]['etapa_api'], 'GROUP_STAGE')
+        self.assertEqual(data[0]['grupo_api'], 'GROUP_A')
+        self.assertEqual(data[0]['arbitro'], 'Wilton Sampaio')
+        self.assertEqual(data[0]['arbitro_nacionalidad'], 'Brazil')
+        self.assertEqual(data[0]['football_data_id'], 537327)
+
+    def test_partido_detalle_muestra_datos_de_seguimiento(self):
+        partido = Partido.objects.get(numero=1)
+        partido.estado = Partido.ESTADO_EN_VIVO
+        partido.goles_local = 2
+        partido.goles_visitante = 1
+        partido.jornada = 1
+        partido.etapa_api = 'GROUP_STAGE'
+        partido.grupo_api = 'GROUP_A'
+        partido.arbitro = 'Wilton Sampaio'
+        partido.arbitro_nacionalidad = 'Brazil'
+        partido.football_data_id = 537327
+        partido.save()
+
+        response = self.client.get(f'/partidos/{partido.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Seguimiento del partido')
+        self.assertContains(response, 'GROUP_STAGE')
+        self.assertContains(response, 'GROUP_A')
+        self.assertContains(response, 'Wilton Sampaio')
+        self.assertContains(response, '537327')
 
     def test_sync_match_result_actualiza_cero_goles_y_estado(self):
         partido = Partido.objects.get(numero=1)

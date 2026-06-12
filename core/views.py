@@ -905,6 +905,13 @@ def api_partidos_vivo(request):
             'marcador': partido.marcador,
             'estado': partido.estado,
             'estado_display': partido.get_estado_display(),
+            'jornada': partido.jornada,
+            'etapa_api': partido.etapa_api,
+            'grupo_api': partido.grupo_api,
+            'arbitro': partido.arbitro,
+            'arbitro_nacionalidad': partido.arbitro_nacionalidad,
+            'evento_actualizado': partido.evento_actualizado.isoformat() if partido.evento_actualizado else '',
+            'football_data_id': partido.football_data_id,
         }
         for partido in partidos_en_vivo
     ]

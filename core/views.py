@@ -692,7 +692,23 @@ def alternar_pais_favorito(request, equipo_id):
         messages.success(request, f'{equipo.nombre} quitado de tus paises favoritos.')
     else:
         EquipoFavorito.objects.create(usuario=request.user, equipo=equipo)
-        messages.success(request, f'{equipo.nombre} agregado a tus paises favoritos.')
+        partidos = Partido.objects.filter(Q(equipo_local=equipo) | Q(equipo_visitante=equipo))
+        favoritos_existentes = set(
+            PartidoFavorito.objects.filter(
+                usuario=request.user,
+                partido__in=partidos,
+            ).values_list('partido_id', flat=True)
+        )
+        nuevos_favoritos = [
+            PartidoFavorito(usuario=request.user, partido=partido)
+            for partido in partidos
+            if partido.id not in favoritos_existentes
+        ]
+        PartidoFavorito.objects.bulk_create(nuevos_favoritos)
+        messages.success(
+            request,
+            f'{equipo.nombre} agregado a tus paises favoritos. Tambien se agregaron sus partidos.',
+        )
 
     volver = request.POST.get('next') or 'core:paises'
     return redirect(volver)

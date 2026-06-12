@@ -1,9 +1,10 @@
 from django.core.management import call_command
+from django.db.models import Q
 from django.test import TestCase
 from django.contrib.auth.models import User
 
 from .api_integration import sync_match_result
-from .models import Equipo, EquipoFavorito, Partido, Prediccion
+from .models import Equipo, EquipoFavorito, Partido, PartidoFavorito, Prediccion
 
 
 class MundialHomeTests(TestCase):
@@ -88,6 +89,11 @@ class MundialHomeTests(TestCase):
 
         self.assertRedirects(response, '/paises/')
         self.assertTrue(EquipoFavorito.objects.filter(usuario=usuario, equipo=mexico).exists())
+        partidos_mexico = Partido.objects.filter(Q(equipo_local=mexico) | Q(equipo_visitante=mexico))
+        self.assertEqual(
+            PartidoFavorito.objects.filter(usuario=usuario, partido__in=partidos_mexico).count(),
+            partidos_mexico.count(),
+        )
         self.assertContains(response, 'bi-star-fill')
 
         self.client.post(f'/selecciones/{mexico.id}/favorito/', {'next': '/paises/'})

@@ -109,6 +109,7 @@ class MundialHomeTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<details class="panel filter-panel favorites-panel">', html=False)
+        self.assertContains(response, 'favorite-compact')
         self.assertContains(response, 'Favoritos')
         self.assertContains(response, '1 partido')
         self.assertContains(response, 'Mexico')

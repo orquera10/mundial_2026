@@ -195,6 +195,168 @@
         gap: 0.7rem;
     }
 
+    .favorites-list {
+        gap: 0.55rem;
+        padding-top: 0.85rem;
+    }
+
+    .favorite-compact {
+        position: relative;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.55rem;
+        align-items: center;
+        padding: 0.7rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: linear-gradient(100deg, color-mix(in srgb, var(--team-local) 12%, #fff), #fff 48%, color-mix(in srgb, var(--team-visitor) 10%, #fff));
+    }
+
+    .favorite-compact::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0.25rem;
+        background: linear-gradient(180deg, var(--team-local), var(--team-visitor));
+    }
+
+    .favorite-compact-main {
+        min-width: 0;
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .favorite-compact-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .favorite-compact-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.18rem;
+        min-width: 0;
+    }
+
+    .favorite-scoreline {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+    }
+
+    .favorite-team {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        min-width: 0;
+        color: var(--ink);
+        font-size: 0.85rem;
+        font-weight: 900;
+    }
+
+    .favorite-team span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .favorite-team.visitor {
+        justify-content: flex-end;
+        text-align: right;
+    }
+
+    .tiny-flag {
+        width: 1.8rem;
+        height: 1.8rem;
+        flex: 0 0 auto;
+    }
+
+    .favorite-score {
+        min-width: 3rem;
+        padding: 0.35rem 0.45rem;
+        border-radius: 8px;
+        background: #172033;
+        color: #fff;
+        font-size: 0.9rem;
+        text-align: center;
+        line-height: 1;
+    }
+
+    .favorite-prediction {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        width: fit-content;
+        padding: 0.28rem 0.45rem;
+        border-radius: 999px;
+        background: #eef4fb;
+        color: #334155;
+        font-size: 0.72rem;
+        font-weight: 900;
+    }
+
+    .favorite-prediction.exacta {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .favorite-prediction.ganador {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .favorite-prediction.fallida {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .favorite-compact-actions {
+        display: grid;
+        gap: 0.35rem;
+    }
+
+    .favorite-compact-actions form {
+        display: block;
+    }
+
+    .favorite-icon-button {
+        width: 2.35rem;
+        height: 2.35rem;
+        display: inline-grid;
+        place-items: center;
+        padding: 0;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--blue);
+        text-decoration: none;
+    }
+
+    .favorite-icon-button.active {
+        color: #b77900;
+        background: #fff8df;
+        border-color: #f0d070;
+    }
+
+    .live-dot-only {
+        width: 0.55rem;
+        height: 0.55rem;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: #ef4444;
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
+        animation: livePulse 1.25s infinite;
+    }
+
     .group-block {
         margin-top: 1rem;
     }
@@ -889,6 +1051,23 @@
             flex-direction: column;
         }
 
+        .favorite-compact {
+            padding: 0.65rem;
+        }
+
+        .favorite-scoreline {
+            gap: 0.35rem;
+        }
+
+        .favorite-team {
+            font-size: 0.8rem;
+        }
+
+        .tiny-flag {
+            width: 1.65rem;
+            height: 1.65rem;
+        }
+
         .match-card {
             border-left-width: 4px;
         }
@@ -1112,7 +1291,7 @@
     <div class="filter-panel-body">
         <div class="match-list favorites-list">
             {% for partido in favoritos_partidos %}
-                {% include 'core/partials/partido_card.html' with partido=partido %}
+                {% include 'core/partials/favorito_compacto.html' with partido=partido %}
             {% empty %}
                 <div class="empty">Todavia no tenes partidos favoritos. Marca una estrella en un partido o agrega una seleccion favorita.</div>
             {% endfor %}

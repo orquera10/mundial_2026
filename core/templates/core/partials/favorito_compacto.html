@@ -1,0 +1,50 @@
+{% with prediccion=partido.prediccion_usuario %}
+<article class="favorite-compact {{ partido.estado }}" data-partido-id="{{ partido.id }}" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }};">
+    <div class="favorite-compact-main">
+        <div class="favorite-compact-meta">
+            <span><i class="bi bi-hash" aria-hidden="true"></i>{{ partido.numero }}</span>
+            <span><i class="bi bi-clock" aria-hidden="true"></i>{{ partido.fecha_argentina|date:"d/m" }} · {{ partido.horario_argentina }}</span>
+            {% if partido.estado == 'en_vivo' %}
+                <span class="live-dot-only" aria-label="En vivo" title="En vivo"></span>
+            {% endif %}
+        </div>
+
+        <div class="favorite-scoreline">
+            <span class="favorite-team">
+                <span class="flag tiny-flag" aria-hidden="true">
+                    {% if partido.bandera_local_url %}
+                        <img class="flag-img" src="{{ partido.bandera_local_url }}" alt="">
+                    {% else %}
+                        {{ partido.bandera_local }}
+                    {% endif %}
+                </span>
+                <span>{{ partido.local_nombre }}</span>
+            </span>
+            <strong class="favorite-score">{{ partido.marcador }}</strong>
+            <span class="favorite-team visitor">
+                <span class="flag tiny-flag" aria-hidden="true">
+                    {% if partido.bandera_visitante_url %}
+                        <img class="flag-img" src="{{ partido.bandera_visitante_url }}" alt="">
+                    {% else %}
+                        {{ partido.bandera_visitante }}
+                    {% endif %}
+                </span>
+                <span>{{ partido.visitante_nombre }}</span>
+            </span>
+        </div>
+
+        {% if prediccion %}
+            <span class="favorite-prediction {{ prediccion.comparacion_estado }}"><i class="bi bi-bullseye" aria-hidden="true"></i>{{ prediccion.goles_local }}-{{ prediccion.goles_visitante }}</span>
+        {% endif %}
+    </div>
+
+    <div class="favorite-compact-actions">
+        <a class="favorite-icon-button" href="{% url 'core:partido_detalle' partido.id %}" title="Mas detalles" aria-label="Mas detalles del partido {{ partido.numero }}"><i class="bi bi-info-circle"></i></a>
+        <form method="post" action="{% url 'core:alternar_favorito' partido.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="favorite-icon-button active" type="submit" title="Quitar de favoritos" aria-label="Quitar partido {{ partido.numero }} de favoritos"><i class="bi bi-star-fill"></i></button>
+        </form>
+    </div>
+</article>
+{% endwith %}

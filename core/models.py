@@ -330,6 +330,7 @@ class Partido(models.Model):
     transmision_notas = models.CharField(max_length=220, blank=True)
     football_data_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
     jornada = models.PositiveSmallIntegerField(null=True, blank=True)
+    estado_api = models.CharField(max_length=40, blank=True)
     etapa_api = models.CharField(max_length=60, blank=True)
     grupo_api = models.CharField(max_length=60, blank=True)
     arbitro = models.CharField(max_length=100, blank=True)
@@ -426,6 +427,21 @@ class Partido(models.Model):
         if self.goles_local is None or self.goles_visitante is None:
             return '-'
         return f'{self.goles_local} - {self.goles_visitante}'
+
+    @property
+    def estado_partido_label(self):
+        estado_api = (self.estado_api or '').upper()
+        if any(token in estado_api for token in ('HALF_TIME', 'HALFTIME', 'PAUSED', 'HT')):
+            return 'Entretiempo'
+        if any(token in estado_api for token in ('IN_PLAY', 'LIVE')):
+            return 'En juego'
+        if any(token in estado_api for token in ('FINISHED', 'ENDED', 'FT')):
+            return 'Finalizado'
+        if any(token in estado_api for token in ('POSTPONED', 'SUSPENDED')):
+            return 'Demorado'
+        if any(token in estado_api for token in ('SCHEDULED', 'TIMED')):
+            return 'Programado'
+        return self.get_estado_display()
 
     @property
     def es_hoy(self):

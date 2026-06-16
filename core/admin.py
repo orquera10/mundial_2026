@@ -110,6 +110,7 @@ class PartidoAdmin(admin.ModelAdmin):
                 'fields': (
                     'football_data_id',
                     'jornada',
+                    'estado_api',
                     'etapa_api',
                     'grupo_api',
                     'arbitro',

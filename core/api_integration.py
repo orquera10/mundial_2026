@@ -192,6 +192,7 @@ def sync_match_result(partido, matches=None):
         mapping = {
             'football_data_id': match.get('id'),
             'jornada': match.get('matchday'),
+            'estado_api': match.get('status') or match.get('state') or '',
             'etapa_api': match.get('stage') or '',
             'grupo_api': match.get('group') or '',
             'escudo_local_url': team_crest(match, 'home'),

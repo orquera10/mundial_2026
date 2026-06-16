@@ -369,6 +369,7 @@ class MundialHomeTests(TestCase):
     def test_api_partidos_vivo_devuelve_marcador_actual(self):
         partido = Partido.objects.get(numero=1)
         partido.estado = Partido.ESTADO_EN_VIVO
+        partido.estado_api = 'IN_PLAY'
         partido.goles_local = 0
         partido.goles_visitante = 1
         partido.jornada = 1
@@ -380,6 +381,7 @@ class MundialHomeTests(TestCase):
         partido.save(
             update_fields=[
                 'estado',
+                'estado_api',
                 'goles_local',
                 'goles_visitante',
                 'jornada',
@@ -401,17 +403,16 @@ class MundialHomeTests(TestCase):
         self.assertEqual(data[0]['goles_visitante'], 1)
         self.assertEqual(data[0]['marcador'], '0 - 1')
         self.assertEqual(data[0]['estado'], Partido.ESTADO_EN_VIVO)
-        self.assertEqual(data[0]['estado_display'], 'En vivo')
-        self.assertEqual(data[0]['jornada'], 1)
-        self.assertEqual(data[0]['etapa_api'], 'GROUP_STAGE')
-        self.assertEqual(data[0]['grupo_api'], 'GROUP_A')
-        self.assertEqual(data[0]['arbitro'], 'Wilton Sampaio')
-        self.assertEqual(data[0]['arbitro_nacionalidad'], 'Brazil')
-        self.assertEqual(data[0]['football_data_id'], 537327)
+        self.assertEqual(data[0]['estado_display'], 'En juego')
+        self.assertNotIn('jornada', data[0])
+        self.assertNotIn('etapa_api', data[0])
+        self.assertNotIn('grupo_api', data[0])
+        self.assertNotIn('football_data_id', data[0])
 
     def test_partido_detalle_muestra_datos_de_seguimiento(self):
         partido = Partido.objects.get(numero=1)
         partido.estado = Partido.ESTADO_EN_VIVO
+        partido.estado_api = 'PAUSED'
         partido.goles_local = 2
         partido.goles_visitante = 1
         partido.jornada = 1
@@ -426,10 +427,10 @@ class MundialHomeTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Seguimiento del partido')
-        self.assertContains(response, 'GROUP_STAGE')
-        self.assertContains(response, 'GROUP_A')
-        self.assertContains(response, 'Wilton Sampaio')
-        self.assertContains(response, '537327')
+        self.assertContains(response, 'Entretiempo')
+        self.assertNotContains(response, 'GROUP_STAGE')
+        self.assertNotContains(response, 'GROUP_A')
+        self.assertNotContains(response, '537327')
 
     def test_sync_match_result_actualiza_cero_goles_y_estado(self):
         partido = Partido.objects.get(numero=1)
@@ -447,6 +448,7 @@ class MundialHomeTests(TestCase):
         partido.refresh_from_db()
         self.assertTrue(actualizado)
         self.assertEqual(partido.estado, Partido.ESTADO_EN_VIVO)
+        self.assertEqual(partido.estado_api, 'IN_PLAY')
         self.assertEqual(partido.goles_local, 0)
         self.assertEqual(partido.goles_visitante, 2)
 
@@ -473,6 +475,7 @@ class MundialHomeTests(TestCase):
         partido.refresh_from_db()
         self.assertTrue(actualizado)
         self.assertEqual(partido.estado, Partido.ESTADO_FINALIZADO)
+        self.assertEqual(partido.estado_api, 'FINISHED')
         self.assertEqual(partido.goles_local, 2)
         self.assertEqual(partido.goles_visitante, 1)
         self.assertEqual(partido.football_data_id, 537327)

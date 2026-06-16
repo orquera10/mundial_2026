@@ -475,7 +475,7 @@
             {% endif %}
         </div>
     </div>
-    {% if partido.estado == 'en_vivo' or partido.evento_actualizado or partido.football_data_id or partido.jornada or partido.etapa_api or partido.grupo_api %}
+    {% if partido.estado == 'en_vivo' or partido.evento_actualizado %}
         <div class="live-panel">
             <div class="live-panel-head">
                 <span class="live-panel-title">
@@ -493,32 +493,8 @@
             <div class="live-data-grid">
                 <div class="live-data-item">
                     <strong>Estado</strong>
-                    <span data-live-status-card>{{ partido.get_estado_display }}</span>
+                    <span data-live-status-card>{{ partido.estado_partido_label }}</span>
                 </div>
-                <div class="live-data-item">
-                    <strong>Jornada</strong>
-                    <span data-live-matchday>{{ partido.jornada|default:"A confirmar" }}</span>
-                </div>
-                <div class="live-data-item">
-                    <strong>Etapa API</strong>
-                    <span data-live-stage>{{ partido.etapa_api|default:partido.get_fase_display }}</span>
-                </div>
-                <div class="live-data-item">
-                    <strong>Grupo API</strong>
-                    <span data-live-group>{{ partido.grupo_api|default:"A confirmar" }}</span>
-                </div>
-                {% if partido.arbitro %}
-                    <div class="live-data-item">
-                        <strong>Arbitro</strong>
-                        <span data-live-referee>{{ partido.arbitro }}{% if partido.arbitro_nacionalidad %} ({{ partido.arbitro_nacionalidad }}){% endif %}</span>
-                    </div>
-                {% endif %}
-                {% if partido.football_data_id %}
-                    <div class="live-data-item">
-                        <strong>ID Football Data</strong>
-                        <span>{{ partido.football_data_id }}</span>
-                    </div>
-                {% endif %}
             </div>
         </div>
     {% endif %}
@@ -682,13 +658,9 @@
             return;
         }
         const partidoId = Number(root.dataset.partidoId);
-        const score = root.querySelector('[data-live-score]');
+        const scoreLabels = root.querySelectorAll('[data-live-score]');
         const statusLabels = root.querySelectorAll('[data-live-status], [data-live-status-card]');
         const updated = root.querySelector('[data-live-updated]');
-        const matchday = root.querySelector('[data-live-matchday]');
-        const stage = root.querySelector('[data-live-stage]');
-        const group = root.querySelector('[data-live-group]');
-        const referee = root.querySelector('[data-live-referee]');
 
         function formatUpdated(value) {
             if (!value) {
@@ -717,28 +689,14 @@
                     if (!partido) {
                         return;
                     }
-                    if (score) {
-                        score.textContent = partido.marcador;
-                    }
+                    scoreLabels.forEach((label) => {
+                        label.textContent = partido.marcador;
+                    });
                     statusLabels.forEach((label) => {
                         label.textContent = partido.estado_display;
                     });
                     if (updated) {
                         updated.textContent = formatUpdated(partido.evento_actualizado);
-                    }
-                    if (matchday) {
-                        matchday.textContent = partido.jornada || 'A confirmar';
-                    }
-                    if (stage) {
-                        stage.textContent = partido.etapa_api || stage.textContent;
-                    }
-                    if (group) {
-                        group.textContent = partido.grupo_api || 'A confirmar';
-                    }
-                    if (referee && partido.arbitro) {
-                        referee.textContent = partido.arbitro_nacionalidad
-                            ? `${partido.arbitro} (${partido.arbitro_nacionalidad})`
-                            : partido.arbitro;
                     }
                 })
                 .catch(() => {});

@@ -463,7 +463,6 @@
     .match-summary {
         list-style: none;
         display: grid;
-        grid-template-columns: 1fr auto;
         gap: 0.55rem;
         align-items: stretch;
         padding: 0.7rem;
@@ -483,28 +482,26 @@
         border-top: 1px solid #edf1f6;
     }
 
-    .summary-side {
-        display: grid;
-        gap: 0.35rem;
-        place-items: center;
-    }
-
     .summary-details-link {
-        width: 1.8rem;
-        height: 1.8rem;
+        width: 2rem;
+        height: 2rem;
         display: inline-grid;
         place-items: center;
         border-radius: 50%;
-        background: #fff;
-        border: 1px solid #d8dee9;
-        color: var(--blue);
+        background: linear-gradient(135deg, var(--blue), var(--brand));
+        border: 1px solid color-mix(in srgb, var(--blue) 38%, #fff);
+        color: #fff;
         text-decoration: none;
-        box-shadow: 0 8px 16px rgba(23, 32, 51, 0.08);
+        box-shadow: 0 10px 18px rgba(23, 32, 51, 0.16);
     }
 
     .summary-details-link:hover {
-        border-color: #b7c9de;
-        background: #f6faff;
+        transform: translateY(-1px);
+    }
+
+    .compact-meta .summary-details-link {
+        margin-left: auto;
+        flex: 0 0 auto;
     }
 
     .compact-meta {
@@ -620,14 +617,23 @@
     }
 
     .expand-hint {
-        width: 1.6rem;
-        height: 1.6rem;
+        width: 1.45rem;
+        height: 1.05rem;
         display: inline-grid;
         place-items: center;
-        border-radius: 50%;
-        background: #f1f6fb;
-        color: var(--muted);
+        grid-column: 1 / -1;
+        justify-self: center;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        color: color-mix(in srgb, var(--team-local, var(--blue)) 58%, var(--muted));
         transition: transform 0.18s ease;
+    }
+
+    .card-bottom-arrow {
+        grid-column: 1 / -1;
+        justify-self: center;
+        align-self: center;
+        margin-top: -0.1rem;
     }
 
     .match-card[open] .expand-hint {
@@ -1132,17 +1138,16 @@
             justify-items: start;
         }
 
-        .summary-side {
-            display: grid;
-            place-items: center;
-        }
-
         .score-wrap {
             justify-items: center;
         }
 
         .expand-hint {
-            justify-self: end;
+            justify-self: center;
+        }
+
+        .card-bottom-arrow {
+            justify-self: center;
         }
 
         .score {

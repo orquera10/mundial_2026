@@ -30,6 +30,7 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'match-summary')
         self.assertContains(response, 'match-expanded')
         self.assertContains(response, 'summary-details-link')
+        self.assertContains(response, 'card-bottom-arrow')
         self.assertContains(response, 'Ir al detalle del partido')
         self.assertContains(response, 'Mas detalles')
 

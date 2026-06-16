@@ -12,6 +12,9 @@
             {% if prediccion %}
                 <span class="compact-prediction-badge {{ prediccion.comparacion_estado }}" title="{{ prediccion.comparacion_label }}"><i class="bi bi-bullseye" aria-hidden="true"></i>{{ prediccion.goles_local }}-{{ prediccion.goles_visitante }}</span>
             {% endif %}
+            <a class="summary-details-link" href="{% url 'core:partido_detalle' partido.id %}" onclick="event.stopPropagation();" aria-label="Ir al detalle del partido {{ partido.numero }}" title="Entrar al partido">
+                <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+            </a>
         </div>
 
         <div class="compact-scoreline">
@@ -50,12 +53,7 @@
             </div>
         </div>
 
-        <div class="summary-side">
-            <a class="summary-details-link" href="{% url 'core:partido_detalle' partido.id %}" onclick="event.stopPropagation();" aria-label="Ir al detalle del partido {{ partido.numero }}" title="Detalle del partido">
-                <i class="bi bi-arrow-right" aria-hidden="true"></i>
-            </a>
-            <span class="expand-hint" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
-        </div>
+        <span class="expand-hint card-bottom-arrow" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
     </summary>
 
     <div class="match-expanded">

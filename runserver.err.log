@@ -189,3 +189,13 @@
 [18/Jun/2026 13:25:55] "GET /api/partidos/25/seguimiento/ HTTP/1.1" 200 19479
 [18/Jun/2026 13:26:25] "GET /api/partidos/25/seguimiento/ HTTP/1.1" 200 19479
 [18/Jun/2026 13:26:54] "GET /api/partidos/25/seguimiento/ HTTP/1.1" 200 25034
+[18/Jun/2026 13:27:25] "GET /api/partidos/25/seguimiento/ HTTP/1.1" 200 25036
+[18/Jun/2026 13:27:54] "GET /api/partidos/25/seguimiento/ HTTP/1.1" 200 25246
+[18/Jun/2026 13:27:57] "GET /partidos/25/ HTTP/1.1" 200 76437
+[18/Jun/2026 13:28:00] "GET /api/partidos/25/seguimiento/ HTTP/1.1" 200 25246
+[18/Jun/2026 13:28:30] "GET /api/partidos/25/seguimiento/ HTTP/1.1" 200 25246
+[18/Jun/2026 13:29:00] "GET /api/partidos/25/seguimiento/ HTTP/1.1" 200 25246
+[18/Jun/2026 13:29:30] "GET /api/partidos/25/seguimiento/ HTTP/1.1" 200 25246
+[18/Jun/2026 13:30:00] "GET /api/partidos/25/seguimiento/ HTTP/1.1" 200 25246
+[18/Jun/2026 16:51:09] "GET /partidos/1/ HTTP/1.1" 200 76913
+[18/Jun/2026 16:51:09,416] - Broken pipe from ('127.0.0.1', 57824)

@@ -1165,6 +1165,9 @@
             <button class="tracking-tab" type="button" role="tab" data-tracking-tab="lineups" aria-selected="false">
                 <i class="bi bi-diagram-3" aria-hidden="true"></i>Formaciones
             </button>
+            <button class="tracking-tab" type="button" role="tab" data-tracking-tab="commentary" aria-selected="false">
+                <i class="bi bi-chat-left-text" aria-hidden="true"></i>Comentarios
+            </button>
             <button class="tracking-tab" type="button" role="tab" data-tracking-tab="report" aria-selected="false">
                 <i class="bi bi-newspaper" aria-hidden="true"></i>Informe
             </button>
@@ -1177,6 +1180,9 @@
         </div>
         <div class="tracking-content" data-tracking-panel="lineups" role="tabpanel" hidden>
             <div class="scraper-lineups" data-lineups-container hidden></div>
+        </div>
+        <div class="tracking-content" data-tracking-panel="commentary" role="tabpanel" hidden>
+            <div class="scraper-summary" data-commentary-container hidden></div>
         </div>
         <div class="tracking-content" data-tracking-panel="report" role="tabpanel" hidden>
             <div class="scraper-summary" data-report-container hidden></div>
@@ -1310,6 +1316,7 @@
         const summaryContainer = root.querySelector('[data-summary-container]');
         const lineupsContainer = root.querySelector('[data-lineups-container]');
         const statisticsContainer = root.querySelector('[data-statistics-container]');
+        const commentaryContainer = root.querySelector('[data-commentary-container]');
         const reportContainer = root.querySelector('[data-report-container]');
         const trackingTabs = root.querySelectorAll('[data-tracking-tab]');
         const trackingPanels = root.querySelectorAll('[data-tracking-panel]');
@@ -1379,6 +1386,16 @@
             return 'high';
         }
 
+        function hasSummaryEvents(summary) {
+            return Boolean(summary && (summary.periods || []).some((period) => (period.events || []).length));
+        }
+
+        function hasSummaryCommentary(summary) {
+            return Boolean(summary && (summary.periods || []).some((period) => {
+                return (period.commentary || []).some((item) => item.description);
+            }));
+        }
+
         function setTrackingTabAvailability(name, available) {
             const tab = root.querySelector('[data-tracking-tab="' + name + '"]');
             if (!tab) {
@@ -1426,7 +1443,7 @@
             if (!summaryContainer || !summary) {
                 return;
             }
-            const periods = (summary.periods || []).filter((period) => (period.events || []).length || (period.commentary || []).length);
+            const periods = (summary.periods || []).filter((period) => (period.events || []).length);
             if (!periods.length) {
                 summaryContainer.hidden = true;
                 return;
@@ -1436,10 +1453,6 @@
                 const score = period.score && period.score.home !== '' && period.score.away !== ''
                     ? '<span>' + html(period.score.home) + ' - ' + html(period.score.away) + '</span>'
                     : '';
-                const commentary = (period.commentary || []).filter((item) => item.description).map((item) => {
-                    return '<article class="match-commentary-card"><span class="match-commentary-minute">' + html(item.minute || '-') + '</span><span class="match-commentary-text">' + html(item.description) + '</span></article>';
-                }).join('');
-                const commentaryStrip = commentary ? '<div class="match-commentary-strip" aria-label="Comentarios del periodo">' + commentary + '</div>' : '';
                 const events = (period.events || []).map((item) => {
                     const scoreText = item.score && item.score.home !== '' && item.score.away !== ''
                         ? ' · ' + html(item.score.home) + '-' + html(item.score.away)
@@ -1453,7 +1466,34 @@
                     const title = html(item.display_type || item.type || 'Evento') + (showPlayerInTitle && item.player ? ': ' + html(item.player) : '');
                     return '<li class="match-event"><span class="match-event-minute">' + html(item.minute || '-') + '</span><span class="match-event-icon ' + html(icon.className) + '" title="' + html(icon.label) + '" aria-label="' + html(icon.label) + '"><i class="bi ' + html(icon.icon) + '" aria-hidden="true"></i></span><span class="match-event-body"><span class="match-event-title">' + title + '</span><span class="match-event-meta">' + team + reason + assist + '</span>' + detail + '</span></li>';
                 }).join('');
-                return '<section class="match-period"><div class="match-period-title"><span>' + html(period.name || 'Partido') + '</span>' + score + '</div>' + commentaryStrip + '<ul class="match-events">' + events + '</ul></section>';
+                return '<section class="match-period"><div class="match-period-title"><span>' + html(period.name || 'Partido') + '</span>' + score + '</div><ul class="match-events">' + events + '</ul></section>';
+            }).join('') + '</div>';
+        }
+
+        function renderCommentary(summary) {
+            if (!commentaryContainer || !summary) {
+                return;
+            }
+            const periods = (summary.periods || []).map((period) => {
+                return {
+                    name: period.name || 'Partido',
+                    score: period.score || {},
+                    commentary: (period.commentary || []).filter((item) => item.description),
+                };
+            }).filter((period) => period.commentary.length);
+            if (!periods.length) {
+                commentaryContainer.hidden = true;
+                return;
+            }
+            commentaryContainer.hidden = false;
+            commentaryContainer.innerHTML = '<div class="match-summary-shell">' + periods.map((period) => {
+                const score = period.score && period.score.home !== '' && period.score.away !== ''
+                    ? '<span>' + html(period.score.home) + ' - ' + html(period.score.away) + '</span>'
+                    : '';
+                const commentary = period.commentary.map((item) => {
+                    return '<article class="match-commentary-card"><span class="match-commentary-minute">' + html(item.minute || '-') + '</span><span class="match-commentary-text">' + html(item.description) + '</span></article>';
+                }).join('');
+                return '<section class="match-period"><div class="match-period-title"><span>' + html(period.name) + '</span>' + score + '</div><div class="match-commentary-strip" aria-label="Comentarios del periodo">' + commentary + '</div></section>';
             }).join('') + '</div>';
         }
 
@@ -1625,15 +1665,24 @@
                         updated.textContent = formatUpdated(partido.updated_at);
                     }
                     const scraper = partido.scraper || {};
-                    setTrackingTabAvailability('summary', Boolean(scraper.summary_available));
+                    const summaryHasEvents = Boolean(scraper.summary_available && hasSummaryEvents(scraper.summary));
+                    const summaryHasCommentary = Boolean(scraper.summary_available && hasSummaryCommentary(scraper.summary));
+                    setTrackingTabAvailability('summary', summaryHasEvents);
                     setTrackingTabAvailability('statistics', Boolean(scraper.statistics_available));
                     setTrackingTabAvailability('lineups', Boolean(scraper.lineups_available));
+                    setTrackingTabAvailability('commentary', summaryHasCommentary);
                     setTrackingTabAvailability('report', Boolean(scraper.report_available));
-                    if (scraper.summary_available) {
+                    if (summaryHasEvents) {
                         renderSummary(scraper.summary);
                     } else if (summaryContainer) {
                         summaryContainer.hidden = true;
                         summaryContainer.innerHTML = '';
+                    }
+                    if (summaryHasCommentary) {
+                        renderCommentary(scraper.summary);
+                    } else if (commentaryContainer) {
+                        commentaryContainer.hidden = true;
+                        commentaryContainer.innerHTML = '';
                     }
                     if (scraper.report_available) {
                         renderReport(scraper.report);

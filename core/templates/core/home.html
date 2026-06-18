@@ -463,6 +463,7 @@
     .match-summary {
         list-style: none;
         display: grid;
+        grid-template-columns: minmax(0, 1fr) 2rem;
         gap: 0.55rem;
         align-items: stretch;
         padding: 0.7rem;
@@ -483,30 +484,31 @@
     }
 
     .summary-details-link {
-        width: 2rem;
-        height: 2rem;
+        grid-column: 2;
+        grid-row: 1 / 3;
+        width: 100%;
+        min-height: 100%;
         display: inline-grid;
         place-items: center;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--blue), var(--brand));
-        border: 1px solid color-mix(in srgb, var(--blue) 38%, #fff);
+        align-self: stretch;
+        border-radius: 8px;
+        background: var(--blue);
+        border: 1px solid color-mix(in srgb, var(--blue) 58%, #fff);
         color: #fff;
         text-decoration: none;
-        box-shadow: 0 10px 18px rgba(23, 32, 51, 0.16);
+        font-size: 1rem;
+        opacity: 0.82;
+        transition: background 0.16s ease, color 0.16s ease, opacity 0.16s ease;
     }
 
     .summary-details-link:hover {
-        transform: translateY(-1px);
-    }
-
-    .compact-meta .summary-details-link {
-        margin-left: auto;
-        flex: 0 0 auto;
-        align-self: flex-start;
+        background: color-mix(in srgb, var(--blue) 84%, #172033);
+        color: #fff;
+        opacity: 1;
     }
 
     .compact-meta {
-        grid-column: 1 / -1;
+        grid-column: 1;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -592,6 +594,7 @@
     }
 
     .compact-scoreline {
+        grid-column: 1;
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
         gap: 0.55rem;
@@ -862,6 +865,18 @@
         background: #a57512;
     }
 
+    .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
     .favorite-form {
         display: block;
     }
@@ -1010,6 +1025,15 @@
         font-weight: 800;
     }
 
+    .standings tr.live-team td {
+        background: color-mix(in srgb, #16a34a 10%, #fff);
+        font-weight: 900;
+    }
+
+    .standings tr.live-team td:first-child {
+        border-left: 4px solid #16a34a;
+    }
+
     .mini-flag {
         display: inline-grid;
         place-items: center;
@@ -1123,7 +1147,7 @@
         }
 
         .match-summary {
-            grid-template-columns: 1fr auto;
+            grid-template-columns: minmax(0, 1fr) 1.75rem;
             gap: 0.5rem;
             padding: 0.62rem;
         }
@@ -1356,6 +1380,20 @@
 
 <div class="section-title">
     <div>
+        <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-clock-history"></i></span>Partidos anteriores</span></h2>
+        <p>Ultimos 4 partidos completados.</p>
+    </div>
+</div>
+<section class="match-list">
+    {% for partido in anteriores %}
+        {% include 'core/partials/partido_card.html' with partido=partido %}
+    {% empty %}
+        <div class="empty">Todavia no hay partidos completados.</div>
+    {% endfor %}
+</section>
+
+<div class="section-title">
+    <div>
         <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-table"></i></span>Fixture por grupos</span></h2>
         <p>{{ partidos|length }} resultado/s con los filtros actuales.</p>
     </div>
@@ -1382,7 +1420,7 @@
         </summary>
         <div class="match-list">
             <div class="table-wrap">
-                <table class="standings">
+                <table class="standings" data-group-standings="{{ seccion.titulo|cut:'Grupo ' }}">
                     <thead>
                         <tr>
                             <th>Equipo</th>
@@ -1398,7 +1436,7 @@
                     </thead>
                     <tbody>
                         {% for fila in seccion.tabla %}
-                            <tr>
+                            <tr data-team-row data-team-id="{{ fila.equipo.id }}">
                                 <td>
                                     <span class="team-cell">
                                         <span class="mini-flag" aria-hidden="true">
@@ -1411,14 +1449,14 @@
                                         <span>{{ fila.equipo.nombre }}</span>
                                     </span>
                                 </td>
-                                <td><strong>{{ fila.pts }}</strong></td>
-                                <td>{{ fila.pj }}</td>
-                                <td>{{ fila.pg }}</td>
-                                <td>{{ fila.pe }}</td>
-                                <td>{{ fila.pp }}</td>
-                                <td>{{ fila.gf }}</td>
-                                <td>{{ fila.gc }}</td>
-                                <td>{{ fila.dg }}</td>
+                                <td><strong data-stat="pts">{{ fila.pts }}</strong></td>
+                                <td data-stat="pj">{{ fila.pj }}</td>
+                                <td data-stat="pg">{{ fila.pg }}</td>
+                                <td data-stat="pe">{{ fila.pe }}</td>
+                                <td data-stat="pp">{{ fila.pp }}</td>
+                                <td data-stat="gf">{{ fila.gf }}</td>
+                                <td data-stat="gc">{{ fila.gc }}</td>
+                                <td data-stat="dg">{{ fila.dg }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -1434,13 +1472,40 @@
 {% endfor %}
 
 <script>
+    function actualizarTablaVivo(grupo, filas, jugando) {
+        const table = document.querySelector(`[data-group-standings="${grupo}"]`);
+        if (!table || !Array.isArray(filas)) {
+            return;
+        }
+        const tbody = table.querySelector('tbody');
+        if (!tbody) {
+            return;
+        }
+        const jugandoSet = new Set((jugando || []).map(String));
+        filas.forEach(fila => {
+            const row = tbody.querySelector(`[data-team-row][data-team-id="${fila.team_id}"]`);
+            if (!row) {
+                return;
+            }
+            row.classList.toggle('live-team', jugandoSet.has(String(fila.team_id)));
+            ['pts', 'pj', 'pg', 'pe', 'pp', 'gf', 'gc', 'dg'].forEach(stat => {
+                const cell = row.querySelector(`[data-stat="${stat}"]`);
+                if (cell && fila[stat] !== undefined) {
+                    cell.textContent = fila[stat];
+                }
+            });
+            tbody.appendChild(row);
+        });
+    }
+
     function actualizarPartidosEnVivo() {
         fetch('{% url 'core:api_partidos_vivo' %}', {
             headers: {'X-Requested-With': 'XMLHttpRequest'}
         })
         .then(r => r.json())
-        .then(data => {
-            data.forEach(partido => {
+        .then(payload => {
+            const partidos = Array.isArray(payload) ? payload : (payload.partidos || []);
+            partidos.forEach(partido => {
                 document.querySelectorAll(`[data-partido-id="${partido.id}"]`).forEach(card => {
                     const score = card.querySelector('.score');
                     const badge = card.querySelector('.badge');
@@ -1450,11 +1515,31 @@
                     if (badge) {
                         badge.textContent = partido.estado_display;
                         badge.className = `badge ${partido.estado}`;
+                        badge.classList.toggle('visually-hidden', partido.estado === 'en_vivo');
+                    }
+                    let liveIndicator = card.querySelector('.live-indicator');
+                    if (partido.estado === 'en_vivo' && !liveIndicator) {
+                        const meta = card.querySelector('.compact-meta');
+                        if (meta) {
+                            liveIndicator = document.createElement('span');
+                            liveIndicator.className = 'live-indicator';
+                            liveIndicator.setAttribute('aria-label', 'Partido en vivo');
+                            liveIndicator.title = 'En vivo';
+                            liveIndicator.innerHTML = '<span class="live-dot" aria-hidden="true"></span>En vivo';
+                            meta.insertBefore(liveIndicator, meta.querySelector('.compact-prediction-badge'));
+                        }
+                    } else if (partido.estado !== 'en_vivo' && liveIndicator) {
+                        liveIndicator.remove();
                     }
                     card.classList.remove('programado', 'en_vivo', 'finalizado');
                     card.classList.add(partido.estado);
                 });
             });
+            if (!Array.isArray(payload)) {
+                Object.entries(payload.tablas || {}).forEach(([grupo, filas]) => {
+                    actualizarTablaVivo(grupo, filas, (payload.jugando || {})[grupo] || []);
+                });
+            }
         })
         .catch(() => {});
     }

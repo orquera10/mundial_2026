@@ -33,9 +33,50 @@
         display: flex;
         flex-wrap: wrap;
         gap: 0.45rem;
+        align-items: center;
         color: var(--muted);
         font-size: 0.82rem;
         font-weight: 800;
+    }
+
+    .detail-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.32rem 0.55rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--muted);
+        font-weight: 900;
+    }
+
+    .detail-status.en_vivo {
+        background: #fee2e2;
+        color: #b91c1c;
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35);
+        animation: liveStatusGlow 1.8s infinite;
+    }
+
+    .detail-status.finalizado {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .detail-status.programado {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    .detail-status-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        display: none;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .detail-status.en_vivo .detail-status-dot {
+        display: inline-block;
     }
 
     .detail-scoreboard {
@@ -281,6 +322,43 @@
         color: var(--muted);
         font-size: 0.8rem;
         font-weight: 900;
+    }
+
+    .match-commentary-strip {
+        display: flex;
+        gap: 0.55rem;
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+        padding: 0.1rem 0 0.35rem;
+    }
+
+    .match-commentary-card {
+        flex: 0 0 16rem;
+        scroll-snap-align: start;
+        display: grid;
+        gap: 0.32rem;
+        min-height: 5.4rem;
+        padding: 0.65rem;
+        border: 1px solid color-mix(in srgb, var(--team-local, var(--blue)) 12%, var(--line));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .match-commentary-minute {
+        color: color-mix(in srgb, var(--team-local, var(--blue)) 70%, var(--ink));
+        font-size: 0.75rem;
+        font-weight: 900;
+    }
+
+    .match-commentary-text {
+        color: var(--ink);
+        font-size: 0.8rem;
+        font-weight: 800;
+        line-height: 1.35;
     }
 
     .match-events {
@@ -647,6 +725,15 @@
         }
     }
 
+    @keyframes liveStatusGlow {
+        70% {
+            box-shadow: 0 0 0 0.45rem rgba(220, 38, 38, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+        }
+    }
+
     .detail-grid {
         display: grid;
         grid-template-columns: 1.1fr 0.9fr;
@@ -827,9 +914,8 @@
 
     .group-fixture {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
-        gap: 0.65rem;
-        align-items: center;
+        gap: 0.35rem;
+        justify-items: center;
         padding: 0.7rem;
         border: 1px solid color-mix(in srgb, var(--fixture-local, var(--team-local, var(--blue))) 14%, var(--line));
         border-left: 5px solid var(--fixture-local, var(--team-local, var(--blue)));
@@ -853,41 +939,33 @@
         overflow-wrap: anywhere;
     }
 
-    .group-fixture-team {
-        display: flex;
+    .group-fixture-title {
+        display: inline-flex;
         align-items: center;
-        gap: 0.45rem;
+        justify-content: center;
+        gap: 0.35rem;
         min-width: 0;
-        font-size: 0.86rem;
+        max-width: 100%;
+        overflow: hidden;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.9rem;
         font-weight: 900;
     }
 
-    .group-fixture-team:last-of-type {
-        justify-content: flex-end;
-        text-align: right;
-    }
-
-    .group-fixture-team-name {
+    .group-fixture-title-text {
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
-    .group-fixture-vs {
-        color: var(--muted);
-        font-size: 0.72rem;
-        font-weight: 900;
-    }
-
     .fixture-meta {
-        grid-column: 1 / -1;
         color: var(--muted);
         font-size: 0.78rem;
         font-weight: 800;
-    }
-
-    .fixture-arrow {
-        color: var(--muted);
+        text-align: center;
     }
 
     .favorite-form {
@@ -1005,6 +1083,10 @@
         .lineups-grid {
             grid-template-columns: 1fr;
         }
+
+        .group-fixture-title {
+            white-space: normal;
+        }
     }
 </style>
 {% endblock %}
@@ -1015,7 +1097,7 @@
     <div class="detail-kicker">
         <span><i class="bi bi-hash" aria-hidden="true"></i> Partido {{ partido.numero }}</span>
         <span>{{ partido.get_fase_display }}{% if partido.grupo %} - Grupo {{ partido.grupo }}{% endif %}</span>
-        <span data-live-status>{{ partido.get_estado_display }}</span>
+        <span class="detail-status {{ partido.estado }}" data-live-status><span class="detail-status-dot" aria-hidden="true"></span><span data-live-status-text>{{ partido.get_estado_display }}</span></span>
     </div>
     <div class="detail-scoreboard">
         <div class="detail-team">
@@ -1151,12 +1233,25 @@
             <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-calendar2-week"></i></span>Proximos del Grupo {{ partido.grupo }}</span></h2>
             <div class="group-fixtures">
                 {% for item in proximos_grupo %}
-                    <a class="group-fixture" href="{% url 'core:partido_detalle' item.id %}">
-                        <span>
-                            <strong>{{ item.local_nombre }} vs {{ item.visitante_nombre }}</strong>
-                            <span class="fixture-meta">{{ item.fecha_argentina|date:"d/m" }} - {{ item.horario_argentina }} · Partido {{ item.numero }}</span>
+                    <a class="group-fixture" href="{% url 'core:partido_detalle' item.id %}" style="--fixture-local: {{ item.color_local }}; --fixture-visitor: {{ item.color_visitante }}; --fixture-local-third: {{ item.color_local_terciario }}; --fixture-visitor-third: {{ item.color_visitante_terciario }};">
+                        <span class="group-fixture-title">
+                            <span class="mini-flag" aria-hidden="true">
+                                {% if item.bandera_local_url %}
+                                    <img src="{{ item.bandera_local_url }}" alt="">
+                                {% else %}
+                                    {{ item.bandera_local }}
+                                {% endif %}
+                            </span>
+                            <span class="group-fixture-title-text">{{ item.local_nombre }} vs {{ item.visitante_nombre }}</span>
+                            <span class="mini-flag" aria-hidden="true">
+                                {% if item.bandera_visitante_url %}
+                                    <img src="{{ item.bandera_visitante_url }}" alt="">
+                                {% else %}
+                                    {{ item.bandera_visitante }}
+                                {% endif %}
+                            </span>
                         </span>
-                        <span class="fixture-arrow" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+                        <span class="fixture-meta">{{ item.fecha_argentina|date:"d/m" }} - {{ item.horario_argentina }} · Partido {{ item.numero }}</span>
                     </a>
                 {% endfor %}
             </div>
@@ -1331,7 +1426,7 @@
             if (!summaryContainer || !summary) {
                 return;
             }
-            const periods = (summary.periods || []).filter((period) => (period.events || []).length);
+            const periods = (summary.periods || []).filter((period) => (period.events || []).length || (period.commentary || []).length);
             if (!periods.length) {
                 summaryContainer.hidden = true;
                 return;
@@ -1341,6 +1436,10 @@
                 const score = period.score && period.score.home !== '' && period.score.away !== ''
                     ? '<span>' + html(period.score.home) + ' - ' + html(period.score.away) + '</span>'
                     : '';
+                const commentary = (period.commentary || []).filter((item) => item.description).map((item) => {
+                    return '<article class="match-commentary-card"><span class="match-commentary-minute">' + html(item.minute || '-') + '</span><span class="match-commentary-text">' + html(item.description) + '</span></article>';
+                }).join('');
+                const commentaryStrip = commentary ? '<div class="match-commentary-strip" aria-label="Comentarios del periodo">' + commentary + '</div>' : '';
                 const events = (period.events || []).map((item) => {
                     const scoreText = item.score && item.score.home !== '' && item.score.away !== ''
                         ? ' · ' + html(item.score.home) + '-' + html(item.score.away)
@@ -1354,7 +1453,7 @@
                     const title = html(item.display_type || item.type || 'Evento') + (showPlayerInTitle && item.player ? ': ' + html(item.player) : '');
                     return '<li class="match-event"><span class="match-event-minute">' + html(item.minute || '-') + '</span><span class="match-event-icon ' + html(icon.className) + '" title="' + html(icon.label) + '" aria-label="' + html(icon.label) + '"><i class="bi ' + html(icon.icon) + '" aria-hidden="true"></i></span><span class="match-event-body"><span class="match-event-title">' + title + '</span><span class="match-event-meta">' + team + reason + assist + '</span>' + detail + '</span></li>';
                 }).join('');
-                return '<section class="match-period"><div class="match-period-title"><span>' + html(period.name || 'Partido') + '</span>' + score + '</div><ul class="match-events">' + events + '</ul></section>';
+                return '<section class="match-period"><div class="match-period-title"><span>' + html(period.name || 'Partido') + '</span>' + score + '</div>' + commentaryStrip + '<ul class="match-events">' + events + '</ul></section>';
             }).join('') + '</div>';
         }
 
@@ -1513,7 +1612,14 @@
                         label.textContent = partido.marcador;
                     });
                     statusLabels.forEach((label) => {
-                        label.textContent = partido.estado_display;
+                        label.classList.remove('programado', 'en_vivo', 'finalizado');
+                        label.classList.add(partido.estado);
+                        const statusText = label.querySelector('[data-live-status-text]');
+                        if (statusText) {
+                            statusText.textContent = partido.estado_display;
+                        } else {
+                            label.textContent = partido.estado_display;
+                        }
                     });
                     if (updated) {
                         updated.textContent = formatUpdated(partido.updated_at);

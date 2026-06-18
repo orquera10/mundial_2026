@@ -1,4 +1,6 @@
 from django.contrib import messages
+from datetime import timedelta
+
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
@@ -14,6 +16,9 @@ from .site_scraper import (
     build_flashscore_report,
     build_flashscore_statistics_report,
     build_flashscore_summary_report,
+    fetch_flashscore_worldcup_matches,
+    flashscore_daily_feed_name,
+    flashscore_match_for_partido_in_matches,
     flashscore_team_name,
     find_flashscore_match_for_partido,
     summarize_lineups_for_tracking,
@@ -200,7 +205,8 @@ def tabla_desde_predicciones(equipos, partidos):
     )
 
 
-def tabla_desde_resultados(equipos, partidos):
+def tabla_desde_resultados(equipos, partidos, resultados_en_vivo=None):
+    resultados_en_vivo = resultados_en_vivo or {}
     tabla = {
         equipo.id: {
             'equipo': equipo,
@@ -219,13 +225,18 @@ def tabla_desde_resultados(equipos, partidos):
     for partido in partidos:
         if not partido.equipo_local_id or not partido.equipo_visitante_id:
             continue
-        if partido.goles_local is None or partido.goles_visitante is None:
+        resultado_en_vivo = resultados_en_vivo.get(partido.id)
+        if resultado_en_vivo:
+            goles_local = resultado_en_vivo.get('goles_local')
+            goles_visitante = resultado_en_vivo.get('goles_visitante')
+        else:
+            goles_local = partido.goles_local
+            goles_visitante = partido.goles_visitante
+        if goles_local is None or goles_visitante is None:
             continue
 
         local = tabla[partido.equipo_local_id]
         visitante = tabla[partido.equipo_visitante_id]
-        goles_local = partido.goles_local
-        goles_visitante = partido.goles_visitante
 
         local['pj'] += 1
         visitante['pj'] += 1
@@ -479,7 +490,13 @@ def home(request):
         .select_related('equipo_local', 'equipo_visitante')
         .order_by('fecha', 'hora', 'numero')[:cupo_proximos]
     )
+    partidos_anteriores = list(
+        Partido.objects.filter(estado=Partido.ESTADO_FINALIZADO)
+        .select_related('equipo_local', 'equipo_visitante')
+        .order_by('-fecha', '-hora', '-numero')[:4]
+    )
     proximos = anotar_predicciones(partidos_en_vivo + partidos_programados, predicciones_por_partido)
+    anteriores = anotar_predicciones(partidos_anteriores, predicciones_por_partido)
     favoritos_partidos = anotar_predicciones(favoritos_partidos, predicciones_por_partido)
     resumen = Partido.objects.aggregate(
         total=Count('id'),
@@ -510,6 +527,7 @@ def home(request):
         'partidos': partidos,
         'secciones_partidos': secciones_partidos,
         'proximos': proximos,
+        'anteriores': anteriores,
         'favoritos_partidos': favoritos_partidos,
         'resumen': resumen,
         'favoritos_ids': favoritos_ids,
@@ -918,23 +936,145 @@ def resetear_todas_predicciones(request):
     messages.success(request, f'Se restablecieron {borradas} predicciones.')
     return redirect(volver)
 
-def api_partidos_vivo(request):
-    partidos_en_vivo = Partido.objects.filter(
-        estado=Partido.ESTADO_EN_VIVO
+
+def tabla_grupo_payload(grupo, resultados_en_vivo=None):
+    equipos = list(Equipo.objects.filter(grupo=grupo).order_by('nombre'))
+    partidos = list(
+        Partido.objects.filter(fase=Partido.FASE_GRUPOS, grupo=grupo)
+        .select_related('equipo_local', 'equipo_visitante')
+        .order_by('fecha', 'hora', 'numero')
     )
-    data = [
+    return [
         {
-            'id': partido.id,
-            'goles_local': partido.goles_local,
-            'goles_visitante': partido.goles_visitante,
-            'marcador': partido.marcador,
-            'estado': partido.estado,
-            'estado_display': partido.estado_partido_label,
-            'evento_actualizado': partido.evento_actualizado.isoformat() if partido.evento_actualizado else '',
+            'team_id': fila['equipo'].id,
+            'team_name': fila['equipo'].nombre,
+            'pj': fila['pj'],
+            'pg': fila['pg'],
+            'pe': fila['pe'],
+            'pp': fila['pp'],
+            'gf': fila['gf'],
+            'gc': fila['gc'],
+            'dg': fila['dg'],
+            'pts': fila['pts'],
         }
-        for partido in partidos_en_vivo
+        for fila in tabla_desde_resultados(equipos, partidos, resultados_en_vivo=resultados_en_vivo)
     ]
-    return JsonResponse(data, safe=False)
+
+
+def scraper_partidos_del_dia():
+    hoy = timezone.localdate()
+    partidos = list(
+        Partido.objects.filter(fase=Partido.FASE_GRUPOS, fecha__in=[hoy, hoy + timedelta(days=1), hoy - timedelta(days=1)])
+        .select_related('equipo_local', 'equipo_visitante')
+        .order_by('fecha', 'hora', 'numero')
+    )
+    if not partidos:
+        return []
+
+    resultados = []
+    for offset in (0, 1, -1):
+        try:
+            report = fetch_flashscore_worldcup_matches(
+                feed_name=flashscore_daily_feed_name(offset),
+                source_url='',
+            )
+        except Exception:
+            continue
+        for partido in partidos:
+            if any(item['id'] == partido.id for item in resultados):
+                continue
+            match = flashscore_match_for_partido_in_matches(partido, report.get('matches', []))
+            if not match:
+                continue
+            score = match.get('score') or {}
+            if match.get('status') == 'programado' and score.get('home') == '' and score.get('away') == '':
+                continue
+            resultados.append(
+                {
+                    'id': partido.id,
+                    'partido': partido,
+                    'match': match,
+                }
+            )
+    return resultados
+
+
+def api_partidos_vivo(request):
+    es_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+    partidos_en_vivo = list(Partido.objects.filter(
+        estado=Partido.ESTADO_EN_VIVO
+    ).select_related('equipo_local', 'equipo_visitante'))
+    scraped_items = scraper_partidos_del_dia() if es_ajax else []
+    scraped_by_id = {item['id']: item for item in scraped_items}
+
+    partidos_por_id = {partido.id: partido for partido in partidos_en_vivo}
+    for item in scraped_items:
+        partidos_por_id[item['id']] = item['partido']
+
+    resultados_en_vivo = {}
+    grupos_afectados = set()
+    data = [
+    ]
+    for partido in partidos_por_id.values():
+        scraped = scraped_by_id.get(partido.id)
+        if scraped:
+            match = scraped['match']
+            score = match.get('score') or {}
+            goles_local = int(score['home']) if str(score.get('home', '')).isdigit() else partido.goles_local
+            goles_visitante = int(score['away']) if str(score.get('away', '')).isdigit() else partido.goles_visitante
+            estado = match.get('status') or partido.estado
+            estado_display = estado.replace('_', ' ').title()
+        else:
+            goles_local = partido.goles_local
+            goles_visitante = partido.goles_visitante
+            estado = partido.estado
+            estado_display = partido.estado_partido_label
+
+        marcador = f'{goles_local} - {goles_visitante}' if goles_local is not None and goles_visitante is not None else partido.marcador
+        if partido.grupo and goles_local is not None and goles_visitante is not None:
+            grupos_afectados.add(partido.grupo)
+            resultados_en_vivo[partido.id] = {
+                'goles_local': goles_local,
+                'goles_visitante': goles_visitante,
+            }
+        data.append(
+            {
+                'id': partido.id,
+                'grupo': partido.grupo,
+                'equipo_local_id': partido.equipo_local_id,
+                'equipo_visitante_id': partido.equipo_visitante_id,
+                'goles_local': goles_local,
+                'goles_visitante': goles_visitante,
+                'marcador': marcador,
+                'estado': estado,
+                'estado_display': estado_display,
+                'evento_actualizado': partido.evento_actualizado.isoformat() if partido.evento_actualizado else '',
+            }
+        )
+
+    if not es_ajax:
+        return JsonResponse(data, safe=False)
+
+    response = {
+        'partidos': data,
+        'tablas': {
+            grupo: tabla_grupo_payload(grupo, resultados_en_vivo=resultados_en_vivo)
+            for grupo in sorted(grupos_afectados)
+        },
+        'jugando': {
+            grupo: [
+                team_id
+                for partido in partidos_por_id.values()
+                if partido.grupo == grupo
+                and partido.id in resultados_en_vivo
+                and scraped_by_id.get(partido.id, {}).get('match', {}).get('status') == 'en_vivo'
+                for team_id in (partido.equipo_local_id, partido.equipo_visitante_id)
+                if team_id
+            ]
+            for grupo in sorted(grupos_afectados)
+        },
+    }
+    return JsonResponse(response)
 
 
 def api_partido_seguimiento(request, partido_id):

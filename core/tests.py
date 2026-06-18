@@ -312,7 +312,10 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'Grupo A')
         self.assertContains(response, f'href="/selecciones/{partido.equipo_local_id}/"')
         self.assertContains(response, 'Proximos del Grupo A')
-        self.assertContains(response, 'Korea Republic vs Czechia')
+        self.assertContains(response, 'Korea Republic')
+        self.assertContains(response, 'Czechia')
+        self.assertContains(response, '--fixture-local:')
+        self.assertContains(response, 'group-fixture-title')
         self.assertContains(response, '--team-local: #006847')
         self.assertContains(response, '--team-visitor: #007a4d')
 
@@ -357,6 +360,7 @@ class MundialHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content.decode().count('aria-label="Partido en vivo"'), 2)
         self.assertEqual(response.content.decode().count('data-partido-id="2"'), 2)
+        self.assertContains(response, 'badge en_vivo visually-hidden')
 
     def test_home_incluye_partidos_en_vivo_en_seccion_proximos(self):
         partido = Partido.objects.get(numero=2)
@@ -371,6 +375,21 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'En vivo y próximos')
         self.assertContains(response, 'Korea Republic')
         self.assertContains(response, 'Czechia')
+
+    def test_home_muestra_ultimos_partidos_anteriores(self):
+        partidos = list(Partido.objects.order_by('numero')[:5])
+        for index, partido in enumerate(partidos, start=1):
+            partido.estado = Partido.ESTADO_FINALIZADO
+            partido.goles_local = index
+            partido.goles_visitante = 0
+            partido.save(update_fields=['estado', 'goles_local', 'goles_visitante'])
+
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Partidos anteriores')
+        self.assertContains(response, 'Ultimos 4 partidos completados')
+        self.assertContains(response, 'badge finalizado')
 
     def test_api_partidos_vivo_devuelve_marcador_actual(self):
         partido = Partido.objects.get(numero=1)
@@ -415,6 +434,33 @@ class MundialHomeTests(TestCase):
         self.assertNotIn('grupo_api', data[0])
         self.assertNotIn('football_data_id', data[0])
 
+    def test_api_partidos_vivo_ajax_usa_scraper_y_actualiza_tabla(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.select_related('equipo_local', 'equipo_visitante').get(numero=25)
+        scraped = {
+            'id': partido.id,
+            'partido': partido,
+            'match': {
+                'status': 'en_vivo',
+                'score': {'home': '1', 'away': '0'},
+            },
+        }
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[scraped]):
+            response = self.client.get('/api/partidos-vivo/', HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['partidos'][0]['id'], partido.id)
+        self.assertEqual(data['partidos'][0]['marcador'], '1 - 0')
+        self.assertEqual(data['partidos'][0]['estado'], 'en_vivo')
+        self.assertIn('A', data['tablas'])
+        self.assertIn(partido.equipo_local_id, data['jugando']['A'])
+        fila_local = next(fila for fila in data['tablas']['A'] if fila['team_id'] == partido.equipo_local_id)
+        self.assertEqual(fila_local['pts'], 3)
+        self.assertEqual(fila_local['pj'], 1)
+
     def test_partido_detalle_muestra_datos_de_seguimiento(self):
         partido = Partido.objects.get(numero=1)
         partido.estado = Partido.ESTADO_EN_VIVO
@@ -433,6 +479,8 @@ class MundialHomeTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Seguimiento del partido')
+        self.assertContains(response, 'detail-status en_vivo')
+        self.assertContains(response, 'detail-status-dot')
         self.assertContains(response, 'href="/estadios/mexico-city-stadium/"')
         self.assertContains(response, 'Wilton Sampaio')
         self.assertNotContains(response, '<h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-info-circle"></i></span>Informacion</span></h2>', html=True)
@@ -1163,6 +1211,11 @@ class MundialHomeTests(TestCase):
                 'MB': "9'",
                 'MC': 'soccer-ball',
                 'MD': 'Lira E. recibe un pase y define abajo para el 1:0.',
+            },
+            {
+                'MB': "62'",
+                'MC': 'substitution',
+                'MD': 'Mexico mueve el banco para sostener el resultado.',
             }
         ]
 
@@ -1185,9 +1238,12 @@ class MundialHomeTests(TestCase):
         self.assertEqual(event['assist_player'], 'Lira E.')
         self.assertEqual(event['description'], 'Lira E. recibe un pase y define abajo para el 1:0.')
         self.assertEqual(event['score']['home'], '1')
+        self.assertEqual(report['periods'][0]['commentary'][0]['description'], 'Lira E. recibe un pase y define abajo para el 1:0.')
         self.assertEqual(report['periods'][0]['events'][1]['category'], 'card')
         self.assertEqual(report['periods'][0]['events'][1]['card_color'], 'yellow')
         self.assertEqual(report['periods'][0]['events'][2]['category'], 'substitution')
+        self.assertEqual(report['periods'][1]['name'], '2do Tiempo')
+        self.assertEqual(report['periods'][1]['commentary'][0]['description'], 'Mexico mueve el banco para sostener el resultado.')
 
     def test_scraper_parsea_informe_flashscore(self):
         from core.site_scraper import parse_flashscore_report_content
@@ -1301,5 +1357,38 @@ class MundialHomeTests(TestCase):
 
         self.assertIsNotNone(match)
         self.assertEqual(match['event_id'], 'CGdvIm6K')
+
+    def test_scraper_prefiere_feed_diario_si_fixture_base_sigue_programado(self):
+        from unittest.mock import patch
+
+        from core.site_scraper import find_flashscore_match_for_partido
+
+        partido = Partido.objects.select_related('equipo_local', 'equipo_visitante').get(numero=25)
+        fixture_match = {
+            'event_id': '8nrACRTs',
+            'home': 'República Checa',
+            'away': 'Sudáfrica',
+            'status': 'programado',
+            'score': {'home': '', 'away': ''},
+        }
+        live_match = {
+            'event_id': '8nrACRTs',
+            'home': 'República Checa',
+            'away': 'Sudáfrica',
+            'status': 'en_vivo',
+            'score': {'home': '1', 'away': '0'},
+        }
+
+        with patch(
+            'core.site_scraper.fetch_flashscore_worldcup_matches',
+            side_effect=[
+                {'matches': [fixture_match]},
+                {'matches': [live_match]},
+            ],
+        ):
+            match = find_flashscore_match_for_partido(partido)
+
+        self.assertEqual(match['status'], 'en_vivo')
+        self.assertEqual(match['score']['home'], '1')
 
 # Create your tests here.

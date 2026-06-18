@@ -5,16 +5,13 @@
         <div class="compact-meta">
             <span><i class="bi bi-hash" aria-hidden="true"></i>{{ partido.numero }}</span>
             <span class="compact-time"><i class="bi bi-clock" aria-hidden="true"></i>{{ partido.fecha_argentina|date:"d/m" }} - {{ partido.horario_argentina }}</span>
-            <span class="badge {{ partido.estado }}">{{ partido.get_estado_display }}</span>
+            <span class="badge {{ partido.estado }}{% if partido.estado == 'en_vivo' %} visually-hidden{% endif %}">{{ partido.get_estado_display }}</span>
             {% if partido.estado == 'en_vivo' %}
                 <span class="live-indicator" aria-label="Partido en vivo" title="En vivo"><span class="live-dot" aria-hidden="true"></span>En vivo</span>
             {% endif %}
             {% if prediccion %}
                 <span class="compact-prediction-badge {{ prediccion.comparacion_estado }}" title="{{ prediccion.comparacion_label }}"><i class="bi bi-bullseye" aria-hidden="true"></i>{{ prediccion.goles_local }}-{{ prediccion.goles_visitante }}</span>
             {% endif %}
-            <a class="summary-details-link" href="{% url 'core:partido_detalle' partido.id %}" onclick="event.stopPropagation();" aria-label="Ir al detalle del partido {{ partido.numero }}" title="Entrar al partido">
-                <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
-            </a>
         </div>
 
         <div class="compact-scoreline">
@@ -53,6 +50,9 @@
             </div>
         </div>
 
+        <a class="summary-details-link" href="{% url 'core:partido_detalle' partido.id %}" onclick="event.stopPropagation();" aria-label="Ir al detalle del partido {{ partido.numero }}" title="Entrar al partido">
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </a>
         <span class="expand-hint card-bottom-arrow" aria-hidden="true"><i class="bi bi-chevron-down"></i></span>
     </summary>
 

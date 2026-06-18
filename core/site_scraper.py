@@ -503,8 +503,9 @@ def flashscore_match_for_partido_in_matches(partido, matches):
 def find_flashscore_match_for_partido(partido, feed_name=None):
     report = fetch_flashscore_worldcup_matches(feed_name)
     found = flashscore_match_for_partido_in_matches(partido, report['matches'])
-    if found:
+    if found and found.get('status') != 'programado':
         return found
+    fallback = found
 
     target_date = partido.fecha_argentina
     day_offset = (target_date - timezone.localdate()).days
@@ -514,10 +515,14 @@ def find_flashscore_match_for_partido(partido, feed_name=None):
             source_url='',
         )
         found = flashscore_match_for_partido_in_matches(partido, daily_report['matches'])
-        if found:
+        if found and (
+            found.get('status') != 'programado'
+            or found.get('score', {}).get('home') != ''
+            or found.get('score', {}).get('away') != ''
+        ):
             return found
 
-    return None
+    return fallback
 
 
 def summarize_lineups_for_tracking(lineups_report):
@@ -670,6 +675,20 @@ def parse_flashscore_commentary_rows(rows):
     return commentary
 
 
+def summary_minute_number(value):
+    match = re.search(r'\d+', str(value or ''))
+    return int(match.group(0)) if match else None
+
+
+def summary_commentary_period_name(commentary):
+    minute = summary_minute_number(commentary.get('minute'))
+    if minute is None:
+        return 'Partido'
+    if minute <= 45:
+        return '1er Tiempo'
+    return '2do Tiempo'
+
+
 def commentary_by_minute_and_icon(commentary_rows, icon):
     by_minute = {}
     for item in parse_flashscore_commentary_rows(commentary_rows):
@@ -682,6 +701,7 @@ def commentary_by_minute_and_icon(commentary_rows, icon):
 def parse_flashscore_summary_rows(rows, home_team='', away_team='', commentary_rows=None):
     report = {'periods': [], 'raw_rows': len(rows)}
     current_period = None
+    commentary_items = parse_flashscore_commentary_rows(commentary_rows or [])
     goal_commentary = commentary_by_minute_and_icon(commentary_rows or [], 'soccer-ball')
 
     for row in rows:
@@ -719,8 +739,8 @@ def parse_flashscore_summary_rows(rows, home_team='', away_team='', commentary_r
         description = summary_row_value(row, 'ICT')
         assist_player = player if category == 'goal' and normalize_scraper_name(event_type) == 'asistencia' else ''
         if category == 'goal' and not description:
-            for commentary in goal_commentary.get(normalize_summary_minute(minute), []):
-                description = commentary.get('description', '')
+            for commentary_item in goal_commentary.get(normalize_summary_minute(minute), []):
+                description = commentary_item.get('description', '')
                 if description:
                     break
 
@@ -743,6 +763,17 @@ def parse_flashscore_summary_rows(rows, home_team='', away_team='', commentary_r
                 'assist_player': assist_player,
             }
         )
+
+    if commentary_items:
+        periods_by_name = {period.get('name'): period for period in report['periods']}
+        for item in commentary_items:
+            period_name = summary_commentary_period_name(item)
+            period = periods_by_name.get(period_name)
+            if period is None:
+                period = {'name': period_name, 'score': {}, 'events': [], 'commentary': []}
+                periods_by_name[period_name] = period
+                report['periods'].append(period)
+            period.setdefault('commentary', []).append(item)
 
     return report
 

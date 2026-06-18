@@ -280,6 +280,8 @@ class MundialHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'filter-panel')
         self.assertContains(response, 'Todo el almanaque')
+        self.assertContains(response, 'payload.partidos')
+        self.assertContains(response, 'LIVE_REFRESH_MS')
         self.assertNotContains(response, '<details class="panel filter-panel" open>', html=False)
 
     def test_almanaque_abre_filtros_si_hay_filtro_activo(self):
@@ -288,6 +290,26 @@ class MundialHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<details class="panel filter-panel" open>', html=False)
         self.assertContains(response, 'Activos')
+
+    def test_almanaque_tarjetas_usan_marcador_del_scraper(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.select_related('equipo_local', 'equipo_visitante').get(numero=25)
+        scraped = {
+            'id': partido.id,
+            'partido': partido,
+            'match': {
+                'status': 'en_vivo',
+                'score': {'home': '2', 'away': '2'},
+            },
+        }
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[scraped]):
+            response = self.client.get('/almanaque/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '2 - 2')
+        self.assertContains(response, 'match-card en_vivo')
 
     def test_pagina_detalle_partido_muestra_informacion_ordenada(self):
         partido = Partido.objects.get(numero=1)
@@ -348,6 +370,62 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'live-indicator')
         self.assertContains(response, 'livePulse')
 
+    def test_home_tarjetas_usan_marcador_del_scraper_en_render_inicial(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.select_related('equipo_local', 'equipo_visitante').get(numero=25)
+        scraped = {
+            'id': partido.id,
+            'partido': partido,
+            'match': {
+                'status': 'en_vivo',
+                'score': {'home': '3', 'away': '2'},
+            },
+        }
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[scraped]):
+            response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '3 - 2')
+        self.assertContains(response, 'match-card en_vivo')
+        self.assertContains(response, 'En vivo')
+
+    def test_home_grupos_usan_resultado_guardado_del_snapshot(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.get(numero=25)
+        partido.scraper_seguimiento = {
+            'complete': True,
+            'estado': 'finalizado',
+            'estado_display': 'Finalizado',
+            'marcador': '2 - 0',
+            'scraper': {
+                'status': 'finalizado',
+                'summary_available': True,
+                'statistics_available': True,
+                'lineups_available': True,
+                'commentary_available': True,
+                'report_available': True,
+            },
+        }
+        partido.save(update_fields=['scraper_seguimiento'])
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[]):
+            response = self.client.get('/', {'grupo': partido.grupo})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Fixture por grupos')
+        self.assertContains(response, '<th>#</th>', html=True)
+        self.assertContains(response, '<th>Equipo</th>', html=True)
+        self.assertContains(response, '<th>J</th>', html=True)
+        self.assertContains(response, '<th>+/-</th>', html=True)
+        self.assertContains(response, '2 - 0')
+        self.assertContains(response, 'match-card finalizado')
+        self.assertContains(response, f'href="/selecciones/{partido.equipo_local_id}/"')
+        self.assertContains(response, '<strong data-stat="pts">3</strong>', html=True)
+        self.assertContains(response, '<td data-stat="gf_gc">2-0</td>', html=True)
+
     def test_home_muestra_indicador_en_vivo_solo_en_partidos_en_vivo(self):
         partido = Partido.objects.get(numero=2)
         partido.estado = Partido.ESTADO_EN_VIVO
@@ -391,7 +469,9 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'Ultimos 4 partidos completados')
         self.assertContains(response, 'badge finalizado')
 
-    def test_api_partidos_vivo_devuelve_marcador_actual(self):
+    def test_api_partidos_vivo_ignora_marcador_guardado_sin_scraper(self):
+        from unittest.mock import patch
+
         partido = Partido.objects.get(numero=1)
         partido.estado = Partido.ESTADO_EN_VIVO
         partido.estado_api = 'IN_PLAY'
@@ -418,21 +498,11 @@ class MundialHomeTests(TestCase):
             ]
         )
 
-        response = self.client.get('/api/partidos-vivo/')
+        with patch('core.views.scraper_partidos_del_dia', return_value=[]):
+            response = self.client.get('/api/partidos-vivo/')
 
         self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['id'], partido.id)
-        self.assertEqual(data[0]['goles_local'], 0)
-        self.assertEqual(data[0]['goles_visitante'], 1)
-        self.assertEqual(data[0]['marcador'], '0 - 1')
-        self.assertEqual(data[0]['estado'], Partido.ESTADO_EN_VIVO)
-        self.assertEqual(data[0]['estado_display'], 'En juego')
-        self.assertNotIn('jornada', data[0])
-        self.assertNotIn('etapa_api', data[0])
-        self.assertNotIn('grupo_api', data[0])
-        self.assertNotIn('football_data_id', data[0])
+        self.assertEqual(response.json(), [])
 
     def test_api_partidos_vivo_ajax_usa_scraper_y_actualiza_tabla(self):
         from unittest.mock import patch
@@ -492,6 +562,24 @@ class MundialHomeTests(TestCase):
         self.assertNotContains(response, 'GROUP_STAGE')
         self.assertNotContains(response, 'GROUP_A')
         self.assertNotContains(response, '537327')
+
+    def test_partido_detalle_precarga_marcador_del_scraper(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.get(numero=1)
+        scraped_match = {
+            'event_id': 'abc123',
+            'status': 'en_vivo',
+            'url': 'https://www.flashscore.com.ar/partido/futbol/mexico-a/south-africa-b/?mid=abc123',
+            'score': {'home': '4', 'away': '1'},
+        }
+
+        with patch('core.views.find_flashscore_match_for_partido', return_value=scraped_match):
+            response = self.client.get(f'/partidos/{partido.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<div class="detail-score" data-live-score>4 - 1</div>', html=True)
+        self.assertContains(response, 'detail-status en_vivo')
 
     def test_api_partido_seguimiento_usa_scraper(self):
         from unittest.mock import patch
@@ -607,6 +695,148 @@ class MundialHomeTests(TestCase):
         self.assertEqual(data['scraper']['lineups']['Mexico']['bench'][0]['name'], 'Guillermo Ochoa')
         self.assertEqual(data['scraper']['lineups']['Mexico']['bench'][0]['substitution_kind'], 'in')
 
+    def test_api_partido_seguimiento_muestra_comentarios_sin_resumen(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.get(numero=1)
+        scraped_match = {
+            'event_id': 'abc123',
+            'status': 'en_vivo',
+            'url': 'https://www.flashscore.com.ar/partido/futbol/mexico-a/south-africa-b/?mid=abc123',
+            'score': {'home': '0', 'away': '0'},
+        }
+        summary = {
+            'status': 200,
+            'event_id': 'abc123',
+            'periods': [
+                {
+                    'name': '1er Tiempo',
+                    'score': {},
+                    'events': [],
+                    'commentary': [
+                        {
+                            'minute': "12'",
+                            'icon': 'info',
+                            'title': '',
+                            'description': 'Mexico intenta progresar por la derecha.',
+                        },
+                    ],
+                }
+            ],
+        }
+
+        with patch('core.views.find_flashscore_match_for_partido', return_value=scraped_match):
+            with patch('core.views.build_flashscore_lineups_report', return_value={'teams': {}}):
+                with patch('core.views.build_flashscore_statistics_report', return_value={'periods': []}):
+                    with patch('core.views.build_flashscore_summary_report', return_value=summary):
+                        with patch('core.views.build_flashscore_report', return_value={}):
+                            response = self.client.get(f'/api/partidos/{partido.id}/seguimiento/')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['marcador'], '0 - 0')
+        self.assertEqual(data['estado'], 'en_vivo')
+        self.assertFalse(data['scraper']['summary_available'])
+        self.assertTrue(data['scraper']['commentary_available'])
+        self.assertEqual(
+            data['scraper']['summary']['periods'][0]['commentary'][0]['description'],
+            'Mexico intenta progresar por la derecha.',
+        )
+
+    def test_api_partido_seguimiento_guarda_snapshot_finalizado_completo(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.get(numero=1)
+        scraped_match = {
+            'event_id': 'abc123',
+            'status': 'finalizado',
+            'url': 'https://www.flashscore.com.ar/partido/futbol/mexico-a/south-africa-b/?mid=abc123',
+            'score': {'home': '2', 'away': '1'},
+        }
+        summary = {
+            'status': 200,
+            'event_id': 'abc123',
+            'periods': [
+                {
+                    'name': '1er Tiempo',
+                    'score': {'home': '1', 'away': '0'},
+                    'events': [{'minute': "9'", 'type': 'Gol', 'player': 'Lira E.'}],
+                    'commentary': [{'minute': "9'", 'description': 'Gol de Mexico.'}],
+                }
+            ],
+        }
+        statistics = {
+            'periods': [{'groups': [{'stats': [{'label': 'Posesion', 'home': '55%', 'away': '45%'}]}]}],
+        }
+        lineups = {
+            'teams': {
+                'Mexico': {
+                    'formation': '4-3-3',
+                    'starters': [{'db_match': 'Raul Rangel', 'flashscore_name': 'Rangel R.', 'number': '1'}],
+                    'bench': [],
+                    'coach': {},
+                }
+            }
+        }
+        report = {'title': 'Mexico gana', 'paragraphs': ['Partido cerrado.']}
+
+        with patch('core.views.find_flashscore_match_for_partido', return_value=scraped_match):
+            with patch('core.views.build_flashscore_lineups_report', return_value=lineups):
+                with patch('core.views.build_flashscore_statistics_report', return_value=statistics):
+                    with patch('core.views.build_flashscore_summary_report', return_value=summary):
+                        with patch('core.views.build_flashscore_report', return_value=report):
+                            response = self.client.get(f'/api/partidos/{partido.id}/seguimiento/')
+
+        self.assertEqual(response.status_code, 200)
+        partido.refresh_from_db()
+        self.assertTrue(partido.scraper_seguimiento['complete'])
+        self.assertEqual(partido.scraper_seguimiento['marcador'], '2 - 1')
+        self.assertTrue(partido.scraper_seguimiento['scraper']['commentary_available'])
+
+        with patch('core.views.find_flashscore_match_for_partido', side_effect=AssertionError('no debe scrapear')):
+            response = self.client.get(f'/api/partidos/{partido.id}/seguimiento/')
+
+        data = response.json()
+        self.assertEqual(data['source'], 'flashscore_cache')
+        self.assertEqual(data['marcador'], '2 - 1')
+        self.assertEqual(data['scraper']['message'], 'Datos cargados desde la base local.')
+
+        with patch('core.views.find_flashscore_match_for_partido', side_effect=AssertionError('no debe scrapear')):
+            response = self.client.get(f'/partidos/{partido.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<div class="detail-score" data-live-score>2 - 1</div>', html=True)
+
+    def test_api_partido_seguimiento_no_guarda_snapshot_incompleto(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.get(numero=1)
+        scraped_match = {
+            'event_id': 'abc123',
+            'status': 'finalizado',
+            'url': 'https://www.flashscore.com.ar/partido/futbol/mexico-a/south-africa-b/?mid=abc123',
+            'score': {'home': '2', 'away': '1'},
+        }
+        summary = {
+            'periods': [
+                {
+                    'events': [{'minute': "9'", 'type': 'Gol'}],
+                    'commentary': [{'minute': "9'", 'description': 'Gol.'}],
+                }
+            ],
+        }
+
+        with patch('core.views.find_flashscore_match_for_partido', return_value=scraped_match):
+            with patch('core.views.build_flashscore_lineups_report', return_value={'teams': {}}):
+                with patch('core.views.build_flashscore_statistics_report', return_value={'periods': []}):
+                    with patch('core.views.build_flashscore_summary_report', return_value=summary):
+                        with patch('core.views.build_flashscore_report', return_value={'title': 'Mexico gana'}):
+                            response = self.client.get(f'/api/partidos/{partido.id}/seguimiento/')
+
+        self.assertEqual(response.status_code, 200)
+        partido.refresh_from_db()
+        self.assertEqual(partido.scraper_seguimiento, {})
+
     def test_api_partido_seguimiento_oculta_error_de_conexion_scraper(self):
         from unittest.mock import patch
 
@@ -620,6 +850,7 @@ class MundialHomeTests(TestCase):
         self.assertFalse(data['scraper']['available'])
         self.assertFalse(data['scraper']['found'])
         self.assertEqual(data['scraper']['status'], 'sin_conexion')
+        self.assertEqual(data['marcador'], '-')
         self.assertIn('No se pudo conectar con Flashscore', data['scraper']['message'])
         self.assertNotIn('detalle interno', data['scraper']['message'])
 
@@ -1197,6 +1428,17 @@ class MundialHomeTests(TestCase):
                 'IK': 'Tarjeta amarilla',
             },
             {
+                'III': 'penalty-goal',
+                'IA': '1',
+                'IB': "45+2'",
+                'IE': '8',
+                'INX': '2',
+                'IOX': '0',
+                'IF': 'Jimenez R.',
+                'ICT': '',
+                'IK': 'Penal',
+            },
+            {
                 'III': 'sub-one',
                 'IA': '1',
                 'IB': "70'",
@@ -1241,7 +1483,10 @@ class MundialHomeTests(TestCase):
         self.assertEqual(report['periods'][0]['commentary'][0]['description'], 'Lira E. recibe un pase y define abajo para el 1:0.')
         self.assertEqual(report['periods'][0]['events'][1]['category'], 'card')
         self.assertEqual(report['periods'][0]['events'][1]['card_color'], 'yellow')
-        self.assertEqual(report['periods'][0]['events'][2]['category'], 'substitution')
+        self.assertEqual(report['periods'][0]['events'][2]['category'], 'penalty_goal')
+        self.assertEqual(report['periods'][0]['events'][2]['display_type'], 'Penal')
+        self.assertEqual(report['periods'][0]['events'][2]['score']['home'], '2')
+        self.assertEqual(report['periods'][0]['events'][3]['category'], 'substitution')
         self.assertEqual(report['periods'][1]['name'], '2do Tiempo')
         self.assertEqual(report['periods'][1]['commentary'][0]['description'], 'Mexico mueve el banco para sostener el resultado.')
 

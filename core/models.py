@@ -338,6 +338,8 @@ class Partido(models.Model):
     evento_actualizado = models.DateTimeField(null=True, blank=True)
     escudo_local_url = models.URLField(blank=True)
     escudo_visitante_url = models.URLField(blank=True)
+    scraper_seguimiento = models.JSONField(default=dict, blank=True)
+    scraper_seguimiento_actualizado = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['fecha', 'hora', 'numero']

@@ -149,6 +149,150 @@ def anotar_predicciones(partidos, predicciones_por_partido):
     return partidos
 
 
+def scraper_score_payload(match):
+    score = (match or {}).get('score') or {}
+    score_home = score.get('home', '')
+    score_away = score.get('away', '')
+    if score_home == '' or score_away == '':
+        return None
+    status = (match or {}).get('status', '')
+    return {
+        'marcador': f'{score_home} - {score_away}',
+        'estado': status,
+        'estado_display': scraper_status_display(status),
+        'goles_local': int(score_home) if str(score_home).isdigit() else None,
+        'goles_visitante': int(score_away) if str(score_away).isdigit() else None,
+    }
+
+
+def scraper_status_display(status):
+    labels = {
+        Partido.ESTADO_PROGRAMADO: 'Programado',
+        Partido.ESTADO_EN_VIVO: 'En vivo',
+        Partido.ESTADO_FINALIZADO: 'Finalizado',
+    }
+    return labels.get(status, status.replace('_', ' ').title() if status else '')
+
+
+def aplicar_marcador_scraper(partido, match):
+    payload = scraper_score_payload(match)
+    if not payload:
+        return partido
+    partido.scraper_marcador = payload['marcador']
+    partido.scraper_estado = payload['estado'] or partido.estado
+    partido.scraper_estado_display = payload['estado_display'] or partido.estado_partido_label
+    return partido
+
+
+def aplicar_marcadores_scraper(partidos, scraped_by_id):
+    for partido in partidos:
+        scraped = scraped_by_id.get(partido.id)
+        if scraped:
+            aplicar_marcador_scraper(partido, scraped.get('match'))
+    return partidos
+
+
+def aplicar_marcadores_snapshot(partidos):
+    for partido in partidos:
+        aplicar_marcador_snapshot(partido)
+    return partidos
+
+
+def resultados_scraper_por_partido(scraped_by_id):
+    resultados = {}
+    for partido_id, scraped in scraped_by_id.items():
+        payload = scraper_score_payload(scraped.get('match'))
+        if payload and payload['goles_local'] is not None and payload['goles_visitante'] is not None:
+            resultados[partido_id] = {
+                'goles_local': payload['goles_local'],
+                'goles_visitante': payload['goles_visitante'],
+            }
+    return resultados
+
+
+def resultados_snapshot_por_partido(partidos):
+    resultados = {}
+    for partido in partidos:
+        cached = partido.scraper_seguimiento or {}
+        scraper = cached.get('scraper') or {}
+        if not cached.get('complete') or not scraper_tracking_complete(scraper):
+            continue
+        marcador = cached.get('marcador') or ''
+        partes = [parte.strip() for parte in marcador.split('-', 1)]
+        if len(partes) != 2 or not partes[0].isdigit() or not partes[1].isdigit():
+            continue
+        resultados[partido.id] = {
+            'goles_local': int(partes[0]),
+            'goles_visitante': int(partes[1]),
+        }
+    return resultados
+
+
+def scraper_tracking_complete(scraper):
+    return all(
+        [
+            scraper.get('summary_available'),
+            scraper.get('statistics_available'),
+            scraper.get('lineups_available'),
+            scraper.get('commentary_available'),
+            scraper.get('report_available'),
+        ]
+    )
+
+
+def partido_tracking_finalizado(status):
+    return status == Partido.ESTADO_FINALIZADO
+
+
+def cached_tracking_response(partido, data):
+    cached = partido.scraper_seguimiento or {}
+    scraper = cached.get('scraper') or {}
+    if not cached.get('complete') or not scraper_tracking_complete(scraper):
+        return None
+    data.update(
+        {
+            'source': 'flashscore_cache',
+            'updated_at': cached.get('updated_at') or data['updated_at'],
+            'estado': cached.get('estado', data['estado']),
+            'estado_display': cached.get('estado_display', data['estado_display']),
+            'marcador': cached.get('marcador', data['marcador']),
+            'scraper': scraper,
+        }
+    )
+    data['scraper']['message'] = 'Datos cargados desde la base local.'
+    return data
+
+
+def aplicar_marcador_snapshot(partido):
+    cached = partido.scraper_seguimiento or {}
+    scraper = cached.get('scraper') or {}
+    if not cached.get('complete') or not scraper_tracking_complete(scraper):
+        return False
+    partido.scraper_marcador = cached.get('marcador') or '-'
+    partido.scraper_estado = cached.get('estado') or partido.estado
+    partido.scraper_estado_display = cached.get('estado_display') or partido.estado_partido_label
+    return True
+
+
+def save_tracking_snapshot_if_complete(partido, data):
+    scraper = data.get('scraper') or {}
+    if not partido_tracking_finalizado(scraper.get('status') or data.get('estado')):
+        return False
+    if not scraper_tracking_complete(scraper):
+        return False
+    partido.scraper_seguimiento = {
+        'complete': True,
+        'updated_at': data.get('updated_at'),
+        'estado': data.get('estado'),
+        'estado_display': data.get('estado_display'),
+        'marcador': data.get('marcador'),
+        'scraper': scraper,
+    }
+    partido.scraper_seguimiento_actualizado = timezone.now()
+    partido.save(update_fields=['scraper_seguimiento', 'scraper_seguimiento_actualizado'])
+    return True
+
+
 def tabla_desde_predicciones(equipos, partidos):
     tabla = {
         equipo.id: {
@@ -479,6 +623,17 @@ def home(request):
         )
 
     partidos = anotar_predicciones(partidos, predicciones_por_partido)
+    aplicar_marcadores_snapshot(partidos)
+    try:
+        scraped_items = scraper_partidos_del_dia()
+    except Exception:
+        scraped_items = []
+    scraped_by_id = {item['id']: item for item in scraped_items}
+    resultados_scraper = {
+        **resultados_snapshot_por_partido(partidos),
+        **resultados_scraper_por_partido(scraped_by_id),
+    }
+    aplicar_marcadores_scraper(partidos, scraped_by_id)
     partidos_en_vivo = list(
         Partido.objects.filter(estado=Partido.ESTADO_EN_VIVO)
         .select_related('equipo_local', 'equipo_visitante')
@@ -498,6 +653,12 @@ def home(request):
     proximos = anotar_predicciones(partidos_en_vivo + partidos_programados, predicciones_por_partido)
     anteriores = anotar_predicciones(partidos_anteriores, predicciones_por_partido)
     favoritos_partidos = anotar_predicciones(favoritos_partidos, predicciones_por_partido)
+    aplicar_marcadores_snapshot(proximos)
+    aplicar_marcadores_snapshot(anteriores)
+    aplicar_marcadores_snapshot(favoritos_partidos)
+    aplicar_marcadores_scraper(proximos, scraped_by_id)
+    aplicar_marcadores_scraper(anteriores, scraped_by_id)
+    aplicar_marcadores_scraper(favoritos_partidos, scraped_by_id)
     resumen = Partido.objects.aggregate(
         total=Count('id'),
         programados=Count('id', filter=Q(estado=Partido.ESTADO_PROGRAMADO)),
@@ -508,7 +669,11 @@ def home(request):
     secciones_partidos = agrupar_partidos(partidos)
     for seccion in secciones_partidos:
         if seccion.get('equipos'):
-            seccion['tabla'] = tabla_desde_resultados(seccion['equipos'], seccion['partidos'])
+            seccion['tabla'] = tabla_desde_resultados(
+                seccion['equipos'],
+                seccion['partidos'],
+                resultados_en_vivo=resultados_scraper,
+            )
     if request.user.is_authenticated:
         fases_proyectadas = [seccion for seccion in secciones_partidos if not seccion.get('equipos')]
         completar_fase_final(fases_proyectadas, secciones_prediccion_grupos(predicciones_por_partido))
@@ -557,6 +722,13 @@ def partido_detalle(request, partido_id):
         favorito = PartidoFavorito.objects.filter(usuario=request.user, partido=partido).exists()
         prediccion = Prediccion.objects.filter(usuario=request.user, partido=partido).first()
     partido.prediccion_usuario = prediccion
+    if not aplicar_marcador_snapshot(partido):
+        try:
+            scraped_match = find_flashscore_match_for_partido(partido)
+        except Exception:
+            scraped_match = None
+        if scraped_match:
+            aplicar_marcador_scraper(partido, scraped_match)
     tabla_grupo = []
     proximos_grupo = []
 
@@ -1001,36 +1173,24 @@ def scraper_partidos_del_dia():
 
 def api_partidos_vivo(request):
     es_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    partidos_en_vivo = list(Partido.objects.filter(
-        estado=Partido.ESTADO_EN_VIVO
-    ).select_related('equipo_local', 'equipo_visitante'))
-    scraped_items = scraper_partidos_del_dia() if es_ajax else []
+    scraped_items = scraper_partidos_del_dia()
     scraped_by_id = {item['id']: item for item in scraped_items}
-
-    partidos_por_id = {partido.id: partido for partido in partidos_en_vivo}
-    for item in scraped_items:
-        partidos_por_id[item['id']] = item['partido']
 
     resultados_en_vivo = {}
     grupos_afectados = set()
     data = [
     ]
-    for partido in partidos_por_id.values():
-        scraped = scraped_by_id.get(partido.id)
-        if scraped:
-            match = scraped['match']
-            score = match.get('score') or {}
-            goles_local = int(score['home']) if str(score.get('home', '')).isdigit() else partido.goles_local
-            goles_visitante = int(score['away']) if str(score.get('away', '')).isdigit() else partido.goles_visitante
-            estado = match.get('status') or partido.estado
-            estado_display = estado.replace('_', ' ').title()
-        else:
-            goles_local = partido.goles_local
-            goles_visitante = partido.goles_visitante
-            estado = partido.estado
-            estado_display = partido.estado_partido_label
-
-        marcador = f'{goles_local} - {goles_visitante}' if goles_local is not None and goles_visitante is not None else partido.marcador
+    for scraped in scraped_items:
+        partido = scraped['partido']
+        match = scraped.get('match') or {}
+        score_payload = scraper_score_payload(match)
+        if not score_payload:
+            continue
+        goles_local = score_payload['goles_local']
+        goles_visitante = score_payload['goles_visitante']
+        estado = score_payload['estado'] or partido.estado
+        estado_display = score_payload['estado_display'] or partido.estado_partido_label
+        marcador = score_payload['marcador']
         if partido.grupo and goles_local is not None and goles_visitante is not None:
             grupos_afectados.add(partido.grupo)
             resultados_en_vivo[partido.id] = {
@@ -1064,7 +1224,8 @@ def api_partidos_vivo(request):
         'jugando': {
             grupo: [
                 team_id
-                for partido in partidos_por_id.values()
+                for item in scraped_items
+                for partido in [item['partido']]
                 if partido.grupo == grupo
                 and partido.id in resultados_en_vivo
                 and scraped_by_id.get(partido.id, {}).get('match', {}).get('status') == 'en_vivo'
@@ -1091,7 +1252,7 @@ def api_partido_seguimiento(request, partido_id):
         'visitante': partido.visitante_nombre,
         'estado': partido.estado,
         'estado_display': partido.estado_partido_label,
-        'marcador': partido.marcador,
+        'marcador': '-',
         'scraper': {
             'available': True,
             'found': False,
@@ -1104,12 +1265,17 @@ def api_partido_seguimiento(request, partido_id):
             'statistics_available': False,
             'statistics': {},
             'summary_available': False,
+            'commentary_available': False,
             'summary': {},
             'report_available': False,
             'report': {},
             'message': 'Sin datos del scraper para este partido.',
         },
     }
+
+    cached_data = cached_tracking_response(partido, data)
+    if cached_data:
+        return JsonResponse(cached_data)
 
     try:
         scraped_match = find_flashscore_match_for_partido(partido)
@@ -1120,7 +1286,7 @@ def api_partido_seguimiento(request, partido_id):
                 'status': 'sin_conexion',
                 'message': (
                     'No se pudo conectar con Flashscore desde el servidor. '
-                    'Se muestra la informacion guardada.'
+                    'No se actualiza el marcador hasta recuperar el scraper.'
                 ),
             }
         )
@@ -1130,11 +1296,11 @@ def api_partido_seguimiento(request, partido_id):
         return JsonResponse(data)
 
     score = scraped_match.get('score') or {}
-    score_home = score.get('home', '')
-    score_away = score.get('away', '')
-    if score_home != '' and score_away != '':
-        data['marcador'] = f'{score_home} - {score_away}'
-        data['estado_display'] = scraped_match.get('status', data['estado_display']).replace('_', ' ').title()
+    score_payload = scraper_score_payload(scraped_match)
+    if score_payload:
+        data['marcador'] = score_payload['marcador']
+        data['estado'] = score_payload['estado'] or data['estado']
+        data['estado_display'] = score_payload['estado_display'] or data['estado_display']
 
     data['scraper'].update(
         {
@@ -1161,6 +1327,11 @@ def api_partido_seguimiento(request, partido_id):
             data['scraper']['summary'] = summary
             data['scraper']['summary_available'] = any(
                 period.get('events') for period in summary.get('periods', [])
+            )
+            data['scraper']['commentary_available'] = any(
+                item.get('description')
+                for period in summary.get('periods', [])
+                for item in period.get('commentary', [])
             )
 
         try:
@@ -1196,6 +1367,7 @@ def api_partido_seguimiento(request, partido_id):
                 team.get('starters') for team in summarized.values()
             )
 
+    save_tracking_snapshot_if_complete(partido, data)
     return JsonResponse(data)
 
 def registro(request):
@@ -1243,6 +1415,12 @@ def almanaque(request):
         }
 
     partidos = anotar_predicciones(partidos, predicciones_por_partido)
+    aplicar_marcadores_snapshot(partidos)
+    try:
+        scraped_items = scraper_partidos_del_dia()
+    except Exception:
+        scraped_items = []
+    aplicar_marcadores_scraper(partidos, {item['id']: item for item in scraped_items})
     if request.user.is_authenticated:
         fases_proyectadas = [
             {'partidos': [partido for partido in partidos if partido.fase != Partido.FASE_GRUPOS]}

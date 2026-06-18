@@ -652,6 +652,8 @@ def summary_event_kind(event_type, type_code, has_score=False):
         return 'card', 'red'
     if 'gol anulado' in value:
         return 'goal_cancelled', ''
+    if 'penal' in value and has_score:
+        return 'penalty_goal', ''
     if 'gol' in value or type_code == '3' or (has_score and type_code == '8'):
         return 'goal', ''
     return 'event', ''
@@ -738,7 +740,7 @@ def parse_flashscore_summary_rows(rows, home_team='', away_team='', commentary_r
         category, card_color = summary_event_kind(event_type, type_code, has_score=has_score)
         description = summary_row_value(row, 'ICT')
         assist_player = player if category == 'goal' and normalize_scraper_name(event_type) == 'asistencia' else ''
-        if category == 'goal' and not description:
+        if category in ('goal', 'penalty_goal') and not description:
             for commentary_item in goal_commentary.get(normalize_summary_minute(minute), []):
                 description = commentary_item.get('description', '')
                 if description:
@@ -751,7 +753,7 @@ def parse_flashscore_summary_rows(rows, home_team='', away_team='', commentary_r
                 'team_side': 'home' if side == '1' else 'away' if side == '2' else '',
                 'team': home_team if side == '1' else away_team if side == '2' else '',
                 'type': event_type,
-                'display_type': 'Gol' if category == 'goal' and assist_player else event_type,
+                'display_type': 'Gol' if category == 'goal' and assist_player else 'Penal' if category == 'penalty_goal' else event_type,
                 'category': category,
                 'card_color': card_color,
                 'type_code': type_code,

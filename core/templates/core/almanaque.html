@@ -801,13 +801,17 @@
 {% endfor %}
 
 <script>
+    const LIVE_REFRESH_MS = 30000;
+
     function actualizarPartidosEnVivo() {
-        fetch('{% url 'core:api_partidos_vivo' %}', {
+        fetch('{% url 'core:api_partidos_vivo' %}?_=' + Date.now(), {
+            cache: 'no-store',
             headers: {'X-Requested-With': 'XMLHttpRequest'}
         })
         .then(r => r.json())
-        .then(data => {
-            data.forEach(partido => {
+        .then(payload => {
+            const partidos = Array.isArray(payload) ? payload : (payload.partidos || []);
+            partidos.forEach(partido => {
                 document.querySelectorAll(`[data-partido-id="${partido.id}"]`).forEach(card => {
                     const score = card.querySelector('.score');
                     const badge = card.querySelector('.badge');
@@ -827,6 +831,6 @@
     }
 
     actualizarPartidosEnVivo();
-    setInterval(actualizarPartidosEnVivo, 60000);
+    setInterval(actualizarPartidosEnVivo, LIVE_REFRESH_MS);
 </script>
 {% endblock %}

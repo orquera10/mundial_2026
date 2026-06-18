@@ -400,6 +400,11 @@
         color: #16a34a;
     }
 
+    .match-event-icon.penalty {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
     .match-event-icon.goal-cancelled {
         background: #f1f5f9;
         color: #64748b;
@@ -1092,12 +1097,13 @@
 {% endblock %}
 
 {% block content %}
+{% with detail_estado=partido.scraper_estado|default:partido.estado detail_estado_display=partido.scraper_estado_display|default:partido.get_estado_display detail_marcador=partido.scraper_marcador|default:"-" %}
 <section class="detail-hero" data-live-detail data-partido-id="{{ partido.id }}" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }}; --team-local-third: {{ partido.color_local_terciario }}; --team-visitor-third: {{ partido.color_visitante_terciario }};">
     <a class="back-link" href="{{ volver_url }}"><i class="bi bi-chevron-left" aria-hidden="true"></i>Volver</a>
     <div class="detail-kicker">
         <span><i class="bi bi-hash" aria-hidden="true"></i> Partido {{ partido.numero }}</span>
         <span>{{ partido.get_fase_display }}{% if partido.grupo %} - Grupo {{ partido.grupo }}{% endif %}</span>
-        <span class="detail-status {{ partido.estado }}" data-live-status><span class="detail-status-dot" aria-hidden="true"></span><span data-live-status-text>{{ partido.get_estado_display }}</span></span>
+        <span class="detail-status {{ detail_estado }}" data-live-status><span class="detail-status-dot" aria-hidden="true"></span><span data-live-status-text>{{ detail_estado_display }}</span></span>
     </div>
     <div class="detail-scoreboard">
         <div class="detail-team">
@@ -1114,7 +1120,7 @@
                 <span>{{ partido.local_nombre }}</span>
             {% endif %}
         </div>
-        <div class="detail-score" data-live-score>{{ partido.marcador }}</div>
+        <div class="detail-score" data-live-score>{{ detail_marcador }}</div>
         <div class="detail-team">
             <span class="detail-flag" aria-hidden="true">
                 {% if partido.bandera_visitante_url %}
@@ -1421,6 +1427,9 @@
         }
 
         function summaryEventIcon(item) {
+            if (item.category === 'penalty_goal') {
+                return { className: 'penalty', icon: 'bi-bullseye', label: 'Gol de penal' };
+            }
             if (item.category === 'goal') {
                 return { className: 'goal', icon: 'bi-circle-fill', label: 'Gol' };
             }
@@ -1666,7 +1675,7 @@
                     }
                     const scraper = partido.scraper || {};
                     const summaryHasEvents = Boolean(scraper.summary_available && hasSummaryEvents(scraper.summary));
-                    const summaryHasCommentary = Boolean(scraper.summary_available && hasSummaryCommentary(scraper.summary));
+                    const summaryHasCommentary = Boolean(scraper.commentary_available && hasSummaryCommentary(scraper.summary));
                     setTrackingTabAvailability('summary', summaryHasEvents);
                     setTrackingTabAvailability('statistics', Boolean(scraper.statistics_available));
                     setTrackingTabAvailability('lineups', Boolean(scraper.lineups_available));
@@ -1712,4 +1721,5 @@
         window.setInterval(updateLiveDetail, 30000);
     })();
 </script>
+{% endwith %}
 {% endblock %}

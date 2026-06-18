@@ -1,12 +1,13 @@
 {% with prediccion=partido.prediccion_usuario %}
 {% with local_nombre=partido.display_local_nombre|default:partido.local_nombre visitante_nombre=partido.display_visitante_nombre|default:partido.visitante_nombre local_bandera=partido.display_local_bandera|default:partido.bandera_local visitante_bandera=partido.display_visitante_bandera|default:partido.bandera_visitante local_bandera_url=partido.display_local_bandera_url|default:partido.bandera_local_url visitante_bandera_url=partido.display_visitante_bandera_url|default:partido.bandera_visitante_url %}
-<details class="match-card {{ partido.estado }}" data-partido-id="{{ partido.id }}" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }}; --team-local-third: {{ partido.color_local_terciario }}; --team-visitor-third: {{ partido.color_visitante_terciario }};">
+{% with card_estado=partido.scraper_estado|default:partido.estado card_estado_display=partido.scraper_estado_display|default:partido.get_estado_display card_marcador=partido.scraper_marcador|default:"-" %}
+<details class="match-card {{ card_estado }}" data-partido-id="{{ partido.id }}" style="--team-local: {{ partido.color_local }}; --team-visitor: {{ partido.color_visitante }}; --team-local-alt: {{ partido.color_local_secundario }}; --team-visitor-alt: {{ partido.color_visitante_secundario }}; --team-local-third: {{ partido.color_local_terciario }}; --team-visitor-third: {{ partido.color_visitante_terciario }};">
     <summary class="match-summary">
         <div class="compact-meta">
             <span><i class="bi bi-hash" aria-hidden="true"></i>{{ partido.numero }}</span>
             <span class="compact-time"><i class="bi bi-clock" aria-hidden="true"></i>{{ partido.fecha_argentina|date:"d/m" }} - {{ partido.horario_argentina }}</span>
-            <span class="badge {{ partido.estado }}{% if partido.estado == 'en_vivo' %} visually-hidden{% endif %}">{{ partido.get_estado_display }}</span>
-            {% if partido.estado == 'en_vivo' %}
+            <span class="badge {{ card_estado }}{% if card_estado == 'en_vivo' %} visually-hidden{% endif %}">{{ card_estado_display }}</span>
+            {% if card_estado == 'en_vivo' %}
                 <span class="live-indicator" aria-label="Partido en vivo" title="En vivo"><span class="live-dot" aria-hidden="true"></span>En vivo</span>
             {% endif %}
             {% if prediccion %}
@@ -31,7 +32,7 @@
             </div>
 
             <div class="score-wrap">
-                <div class="score">{{ partido.marcador }}</div>
+                <div class="score">{{ card_marcador }}</div>
             </div>
 
             <div class="compact-team">
@@ -139,5 +140,6 @@
         {% endif %}
     </div>
 </details>
+{% endwith %}
 {% endwith %}
 {% endwith %}

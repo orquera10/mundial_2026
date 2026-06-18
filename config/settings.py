@@ -193,3 +193,11 @@ LOGIN_REDIRECT_URL = 'core:home'
 LOGOUT_REDIRECT_URL = 'core:login'
 
 FOOTBALL_DATA_API_KEY = os.environ.get('FOOTBALL_DATA_API_KEY', '')
+SCRAPER_BASE_URL = os.environ.get('SCRAPER_BASE_URL', '')
+SCRAPER_USER_AGENT = os.environ.get(
+    'SCRAPER_USER_AGENT',
+    'Mundial2026Bot/1.0 (+https://mundial26.darioapp.online)',
+)
+SCRAPER_TIMEOUT_SECONDS = int(os.environ.get('SCRAPER_TIMEOUT_SECONDS', '15'))
+SCRAPER_FLASHSCORE_FSIGN = os.environ.get('SCRAPER_FLASHSCORE_FSIGN', 'SW9D1eZo')
+SCRAPER_FLASHSCORE_TODAY_FEED = os.environ.get('SCRAPER_FLASHSCORE_TODAY_FEED', 'f_1_0_2_es-ar_1')

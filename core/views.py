@@ -4,10 +4,20 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render, resolve_url
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import RegistroUsuarioForm
 from .models import Equipo, EquipoFavorito, Partido, PartidoFavorito, Prediccion, bandera_url
+from .site_scraper import (
+    build_flashscore_lineups_report,
+    build_flashscore_report,
+    build_flashscore_statistics_report,
+    build_flashscore_summary_report,
+    flashscore_team_name,
+    find_flashscore_match_for_partido,
+    summarize_lineups_for_tracking,
+)
 from .stadium_data import ESTADIOS_2026
 
 
@@ -546,6 +556,20 @@ def partido_detalle(request, partido_id):
             if item.id != partido.id and item.estado == Partido.ESTADO_PROGRAMADO
         ][:4]
 
+    estadio_detalle_item = next(
+        (
+            item
+            for item in ESTADIOS_2026
+            if partido.estadio
+            in {
+                item.get('estadio', ''),
+                item.get('titulo_fifa', ''),
+                item.get('nombre_habitual', ''),
+            }
+        ),
+        None,
+    )
+
     return render(
         request,
         'core/partido_detalle.html',
@@ -554,6 +578,7 @@ def partido_detalle(request, partido_id):
             'favorito': favorito,
             'tabla_grupo': tabla_grupo,
             'proximos_grupo': proximos_grupo,
+            'estadio_detalle': estadio_detalle_item,
             'volver_url': url_volver(request, 'core:home'),
         },
     )
@@ -910,6 +935,128 @@ def api_partidos_vivo(request):
         for partido in partidos_en_vivo
     ]
     return JsonResponse(data, safe=False)
+
+
+def api_partido_seguimiento(request, partido_id):
+    partido = get_object_or_404(
+        Partido.objects.select_related('equipo_local', 'equipo_visitante'),
+        id=partido_id,
+    )
+    data = {
+        'ok': True,
+        'partido_id': partido.id,
+        'source': 'flashscore',
+        'updated_at': timezone.localtime(timezone.now()).isoformat(),
+        'local': partido.local_nombre,
+        'visitante': partido.visitante_nombre,
+        'estado': partido.estado,
+        'estado_display': partido.estado_partido_label,
+        'marcador': partido.marcador,
+        'scraper': {
+            'available': True,
+            'found': False,
+            'status': '',
+            'url': '',
+            'event_id': '',
+            'score': {},
+            'lineups_available': False,
+            'lineups': {},
+            'statistics_available': False,
+            'statistics': {},
+            'summary_available': False,
+            'summary': {},
+            'report_available': False,
+            'report': {},
+            'message': 'Sin datos del scraper para este partido.',
+        },
+    }
+
+    try:
+        scraped_match = find_flashscore_match_for_partido(partido)
+    except Exception:
+        data['scraper'].update(
+            {
+                'available': False,
+                'status': 'sin_conexion',
+                'message': (
+                    'No se pudo conectar con Flashscore desde el servidor. '
+                    'Se muestra la informacion guardada.'
+                ),
+            }
+        )
+        return JsonResponse(data)
+
+    if not scraped_match:
+        return JsonResponse(data)
+
+    score = scraped_match.get('score') or {}
+    score_home = score.get('home', '')
+    score_away = score.get('away', '')
+    if score_home != '' and score_away != '':
+        data['marcador'] = f'{score_home} - {score_away}'
+        data['estado_display'] = scraped_match.get('status', data['estado_display']).replace('_', ' ').title()
+
+    data['scraper'].update(
+        {
+            'found': True,
+            'status': scraped_match.get('status', ''),
+            'url': scraped_match.get('url', ''),
+            'event_id': scraped_match.get('event_id', ''),
+            'score': score,
+            'message': 'Datos actualizados desde Flashscore.',
+        }
+    )
+
+    if scraped_match.get('status') != 'programado' and scraped_match.get('event_id') and scraped_match.get('url'):
+        try:
+            summary = build_flashscore_summary_report(
+                scraped_match['event_id'],
+                scraped_match['url'],
+                home_team=flashscore_team_name(scraped_match.get('home', '')),
+                away_team=flashscore_team_name(scraped_match.get('away', '')),
+            )
+        except Exception:
+            data['scraper']['summary_available'] = False
+        else:
+            data['scraper']['summary'] = summary
+            data['scraper']['summary_available'] = any(
+                period.get('events') for period in summary.get('periods', [])
+            )
+
+        try:
+            report = build_flashscore_report(scraped_match['event_id'], scraped_match['url'])
+        except Exception:
+            data['scraper']['report_available'] = False
+        else:
+            data['scraper']['report'] = report
+            data['scraper']['report_available'] = bool(
+                report.get('title') or report.get('paragraphs')
+            )
+
+        try:
+            statistics = build_flashscore_statistics_report(scraped_match['event_id'], scraped_match['url'])
+        except Exception:
+            data['scraper']['statistics_available'] = False
+        else:
+            data['scraper']['statistics'] = statistics
+            data['scraper']['statistics_available'] = any(
+                group.get('stats')
+                for period in statistics.get('periods', [])
+                for group in period.get('groups', [])
+            )
+
+        try:
+            lineups = build_flashscore_lineups_report(scraped_match['event_id'], scraped_match['url'])
+        except Exception:
+            data['scraper']['message'] = 'Datos de partido disponibles. Formaciones no disponibles por ahora.'
+        else:
+            summarized = summarize_lineups_for_tracking(lineups)
+            data['scraper']['lineups'] = summarized
+            data['scraper']['lineups_available'] = any(
+                team.get('starters') for team in summarized.values()
+            )
+
+    return JsonResponse(data)
 
 def registro(request):
     if request.method == 'POST':

@@ -419,39 +419,43 @@
 
     .table-wrap {
         overflow-x: auto;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: #fff;
     }
 
     .standings {
         width: 100%;
-        min-width: 520px;
+        min-width: 0;
         border-collapse: collapse;
+        color: var(--ink);
     }
 
     .standings th,
     .standings td {
-        padding: 0.58rem 0.5rem;
-        border-bottom: 1px solid var(--line);
+        padding: 0.46rem 0.35rem;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.06);
         text-align: center;
-        font-size: 0.86rem;
+        font-size: 0.76rem;
+    }
+
+    .standings tbody tr:last-child td {
+        border-bottom: 0;
     }
 
     .standings th {
-        background: #f1f6fb;
+        background: transparent;
         color: var(--muted);
-        font-size: 0.72rem;
+        font-size: 0.62rem;
+        font-weight: 700;
         text-transform: uppercase;
     }
 
     .standings td:first-child,
     .standings th:first-child {
-        text-align: left;
+        width: 1.6rem;
+        color: var(--muted);
     }
 
     .standings .selected-row {
-        background: color-mix(in srgb, var(--team-primary) 8%, #fff);
+        background: color-mix(in srgb, var(--team-primary) 7%, #fff);
         font-weight: 900;
     }
 
@@ -461,11 +465,12 @@
         gap: 0.45rem;
         min-width: 0;
         font-weight: 900;
+        color: var(--ink);
     }
 
     .mini-flag {
-        width: 1.65rem;
-        height: 1.65rem;
+        width: 1.25rem;
+        height: 1.25rem;
         display: inline-grid;
         place-items: center;
         flex: 0 0 auto;
@@ -479,6 +484,42 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
+    }
+
+    .standings-card {
+        padding: 0.75rem;
+        border-radius: 8px;
+        background:
+            linear-gradient(135deg, color-mix(in srgb, var(--team-primary) 10%, #fff), transparent 42%),
+            #fff;
+        border: 1px solid color-mix(in srgb, var(--team-primary) 14%, var(--line));
+        color: var(--ink);
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .standings-card h2 {
+        margin: 0 0 0.9rem;
+        color: var(--ink);
+        font-size: 0.86rem;
+    }
+
+    .standings-card h2 .icon {
+        display: none;
+    }
+
+    .standings-team-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .standings-team-name a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .standings-team-name a:hover {
+        text-decoration: underline;
     }
 
     .match-list {
@@ -999,26 +1040,24 @@
     </section>
 
     {% if tabla_grupo %}
-        <section class="panel team-section">
+        <section class="standings-card team-section">
             <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-table"></i></span>Tabla Grupo {{ equipo.grupo }}</span></h2>
             <div class="table-wrap">
                 <table class="standings">
                     <thead>
                         <tr>
+                            <th>#</th>
                             <th>Equipo</th>
-                            <th>Pts</th>
-                            <th>PJ</th>
-                            <th>PG</th>
-                            <th>PE</th>
-                            <th>PP</th>
-                            <th>GF</th>
-                            <th>GC</th>
+                            <th>J</th>
+                            <th>+/-</th>
                             <th>DG</th>
+                            <th>PTS</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for fila in tabla_grupo %}
                             <tr class="{% if fila.equipo.id == equipo.id %}selected-row{% endif %}">
+                                <td>{{ forloop.counter }}</td>
                                 <td>
                                     <span class="team-cell">
                                         <span class="mini-flag" aria-hidden="true">
@@ -1028,17 +1067,13 @@
                                                 {{ fila.equipo.bandera }}
                                             {% endif %}
                                         </span>
-                                        <span>{{ fila.equipo.nombre }}</span>
+                                        <span class="standings-team-name"><a href="{% url 'core:seleccion_detalle' fila.equipo.id %}">{{ fila.equipo.nombre }}</a></span>
                                     </span>
                                 </td>
-                                <td><strong>{{ fila.pts }}</strong></td>
                                 <td>{{ fila.pj }}</td>
-                                <td>{{ fila.pg }}</td>
-                                <td>{{ fila.pe }}</td>
-                                <td>{{ fila.pp }}</td>
-                                <td>{{ fila.gf }}</td>
-                                <td>{{ fila.gc }}</td>
+                                <td>{{ fila.gf }}-{{ fila.gc }}</td>
                                 <td>{{ fila.dg }}</td>
+                                <td><strong>{{ fila.pts }}</strong></td>
                             </tr>
                         {% endfor %}
                     </tbody>

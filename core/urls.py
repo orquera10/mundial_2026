@@ -23,4 +23,5 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('registro/', views.registro, name='registro'),
     path('api/partidos-vivo/', views.api_partidos_vivo, name='api_partidos_vivo'),
+    path('api/partidos/<int:partido_id>/seguimiento/', views.api_partido_seguimiento, name='api_partido_seguimiento'),
 ]

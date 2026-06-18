@@ -7,9 +7,92 @@ from core.models import Equipo, Partido
 
 TIME_SLOTS = [time(13, 0), time(16, 0), time(19, 0), time(22, 0)]
 
+OFFICIAL_GROUP_KICKOFFS = {
+    1: ('2026-06-11', time(13, 0)),
+    2: ('2026-06-11', time(20, 0)),
+    3: ('2026-06-12', time(15, 0)),
+    4: ('2026-06-12', time(18, 0)),
+    5: ('2026-06-13', time(21, 0)),
+    6: ('2026-06-13', time(21, 0)),
+    7: ('2026-06-13', time(18, 0)),
+    8: ('2026-06-13', time(12, 0)),
+    9: ('2026-06-14', time(19, 0)),
+    10: ('2026-06-14', time(12, 0)),
+    11: ('2026-06-14', time(15, 0)),
+    12: ('2026-06-14', time(20, 0)),
+    13: ('2026-06-15', time(18, 0)),
+    14: ('2026-06-15', time(12, 0)),
+    15: ('2026-06-15', time(18, 0)),
+    16: ('2026-06-15', time(12, 0)),
+    17: ('2026-06-16', time(15, 0)),
+    18: ('2026-06-16', time(18, 0)),
+    19: ('2026-06-16', time(20, 0)),
+    20: ('2026-06-16', time(21, 0)),
+    21: ('2026-06-17', time(19, 0)),
+    22: ('2026-06-17', time(15, 0)),
+    23: ('2026-06-17', time(12, 0)),
+    24: ('2026-06-17', time(20, 0)),
+    25: ('2026-06-18', time(12, 0)),
+    26: ('2026-06-18', time(12, 0)),
+    27: ('2026-06-18', time(15, 0)),
+    28: ('2026-06-18', time(19, 0)),
+    29: ('2026-06-19', time(20, 30)),
+    30: ('2026-06-19', time(18, 0)),
+    31: ('2026-06-19', time(20, 0)),
+    32: ('2026-06-19', time(12, 0)),
+    33: ('2026-06-20', time(16, 0)),
+    34: ('2026-06-20', time(19, 0)),
+    35: ('2026-06-20', time(12, 0)),
+    36: ('2026-06-20', time(22, 0)),
+    37: ('2026-06-21', time(18, 0)),
+    38: ('2026-06-21', time(12, 0)),
+    39: ('2026-06-21', time(12, 0)),
+    40: ('2026-06-21', time(18, 0)),
+    41: ('2026-06-22', time(20, 0)),
+    42: ('2026-06-22', time(17, 0)),
+    43: ('2026-06-22', time(12, 0)),
+    44: ('2026-06-22', time(20, 0)),
+    45: ('2026-06-23', time(16, 0)),
+    46: ('2026-06-23', time(19, 0)),
+    47: ('2026-06-23', time(12, 0)),
+    48: ('2026-06-23', time(20, 0)),
+    49: ('2026-06-24', time(18, 0)),
+    50: ('2026-06-24', time(18, 0)),
+    51: ('2026-06-24', time(12, 0)),
+    52: ('2026-06-24', time(12, 0)),
+    53: ('2026-06-24', time(19, 0)),
+    54: ('2026-06-24', time(19, 0)),
+    55: ('2026-06-25', time(16, 0)),
+    56: ('2026-06-25', time(16, 0)),
+    57: ('2026-06-25', time(18, 0)),
+    58: ('2026-06-25', time(18, 0)),
+    59: ('2026-06-25', time(19, 0)),
+    60: ('2026-06-25', time(19, 0)),
+    61: ('2026-06-26', time(15, 0)),
+    62: ('2026-06-26', time(15, 0)),
+    63: ('2026-06-26', time(20, 0)),
+    64: ('2026-06-26', time(20, 0)),
+    65: ('2026-06-26', time(19, 0)),
+    66: ('2026-06-26', time(18, 0)),
+    67: ('2026-06-27', time(17, 0)),
+    68: ('2026-06-27', time(17, 0)),
+    69: ('2026-06-27', time(21, 0)),
+    70: ('2026-06-27', time(21, 0)),
+    71: ('2026-06-27', time(19, 30)),
+    72: ('2026-06-27', time(19, 30)),
+}
+
 
 def match_time(numero):
+    kickoff = OFFICIAL_GROUP_KICKOFFS.get(numero)
+    if kickoff:
+        return kickoff[1]
     return TIME_SLOTS[(numero - 1) % len(TIME_SLOTS)]
+
+
+def match_date(numero, fallback):
+    kickoff = OFFICIAL_GROUP_KICKOFFS.get(numero)
+    return kickoff[0] if kickoff else fallback
 
 
 def transmision_argentina(local, visitante, fase):
@@ -148,6 +231,7 @@ class Command(BaseCommand):
 
         creados = 0
         for numero, grupo, fecha, estadio, ciudad, local, visitante in GROUP_MATCHES:
+            fecha = match_date(numero, fecha)
             partido, created = Partido.objects.get_or_create(
                 numero=numero,
                 defaults={
@@ -168,6 +252,8 @@ class Command(BaseCommand):
                 for campo, valor in {
                     'fase': Partido.FASE_GRUPOS,
                     'grupo': grupo,
+                    'fecha': date.fromisoformat(fecha),
+                    'hora': match_time(numero),
                     'estadio': estadio,
                     'ciudad': ciudad,
                     'equipo_local': equipos[local],
@@ -181,6 +267,8 @@ class Command(BaseCommand):
                     update_fields=[
                         'fase',
                         'grupo',
+                        'fecha',
+                        'hora',
                         'estadio',
                         'ciudad',
                         'equipo_local',

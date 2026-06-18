@@ -298,13 +298,19 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'Partido 1')
         self.assertContains(response, 'Mexico')
         self.assertContains(response, 'South Africa')
-        self.assertContains(response, 'Fecha y hora Argentina')
-        self.assertContains(response, 'TV Argentina')
+        self.assertContains(response, partido.horario_argentina)
+        self.assertContains(response, 'href="/estadios/mexico-city-stadium/"')
+        self.assertContains(response, 'Mexico City Stadium')
+        self.assertNotContains(response, 'Fecha y hora Argentina')
+        self.assertNotContains(response, 'Fecha y hora local')
+        self.assertNotContains(response, 'TV Argentina')
+        self.assertNotContains(response, 'Streaming')
         self.assertNotContains(response, 'Datos del evento')
         self.assertNotContains(response, 'Alineaciones')
         self.assertNotContains(response, 'ID Football-Data')
         self.assertNotContains(response, 'Etapa API')
-        self.assertContains(response, 'Tabla Grupo A')
+        self.assertContains(response, 'Grupo A')
+        self.assertContains(response, f'href="/selecciones/{partido.equipo_local_id}/"')
         self.assertContains(response, 'Proximos del Grupo A')
         self.assertContains(response, 'Korea Republic vs Czechia')
         self.assertContains(response, '--team-local: #006847')
@@ -326,9 +332,9 @@ class MundialHomeTests(TestCase):
         partido = Partido.objects.get(numero=4)
 
         self.assertEqual(partido.ciudad, 'Los Angeles')
-        self.assertEqual(partido.horario, '22:00')
-        self.assertEqual(partido.fecha_argentina.isoformat(), '2026-06-13')
-        self.assertEqual(partido.horario_argentina, '02:00 ARG')
+        self.assertEqual(partido.horario, '18:00')
+        self.assertEqual(partido.fecha_argentina.isoformat(), '2026-06-12')
+        self.assertEqual(partido.horario_argentina, '22:00 ARG')
 
     def test_home_renderiza_actualizador_de_partidos_en_vivo(self):
         response = self.client.get('/')
@@ -427,10 +433,147 @@ class MundialHomeTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Seguimiento del partido')
-        self.assertContains(response, 'Entretiempo')
+        self.assertContains(response, 'href="/estadios/mexico-city-stadium/"')
+        self.assertContains(response, 'Wilton Sampaio')
+        self.assertNotContains(response, '<h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-info-circle"></i></span>Informacion</span></h2>', html=True)
+        self.assertNotContains(response, 'Fecha y hora local')
+        self.assertNotContains(response, 'TV Argentina')
+        self.assertNotContains(response, 'Streaming')
+        self.assertNotContains(response, 'data-live-status-card')
+        self.assertNotContains(response, 'data-scraper-event')
         self.assertNotContains(response, 'GROUP_STAGE')
         self.assertNotContains(response, 'GROUP_A')
         self.assertNotContains(response, '537327')
+
+    def test_api_partido_seguimiento_usa_scraper(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.get(numero=1)
+        scraped_match = {
+            'event_id': 'abc123',
+            'status': 'finalizado',
+            'url': 'https://www.flashscore.com.ar/partido/futbol/mexico-a/south-africa-b/?mid=abc123',
+            'score': {'home': '2', 'away': '0'},
+        }
+        lineups = {
+            'teams': {
+                'Mexico': {
+                    'formation': '1-4-3-3',
+                    'starters': [
+                        {
+                            'db_match': 'Raul Rangel',
+                            'flashscore_name': 'Rangel R.',
+                            'number': '1',
+                            'db_position': 'Portero',
+                            'rating': '7.1',
+                            'substitution_minute': "70'",
+                            'substitution_player': 'Ochoa G.',
+                            'substitution_player_number': '13',
+                            'substitution_kind': 'out',
+                            'matched': True,
+                        }
+                    ],
+                    'bench': [
+                        {
+                            'db_match': 'Guillermo Ochoa',
+                            'flashscore_name': 'Ochoa G.',
+                            'number': '13',
+                            'db_position': 'Portero',
+                            'rating': '6.9',
+                            'substitution_minute': "70'",
+                            'substitution_player': 'Rangel R.',
+                            'substitution_player_number': '1',
+                            'substitution_kind': 'in',
+                            'matched': True,
+                        }
+                    ],
+                    'coach': {},
+                }
+            }
+        }
+        statistics = {
+            'status': 200,
+            'event_id': 'abc123',
+            'periods': [
+                {
+                    'name': 'Partido',
+                    'groups': [
+                        {
+                            'name': 'Estadísticas principales',
+                            'stats': [
+                                {'label': 'Posesión', 'home': '55%', 'away': '45%'},
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+        summary = {
+            'status': 200,
+            'event_id': 'abc123',
+            'periods': [
+                {
+                    'name': '1er Tiempo',
+                    'score': {'home': '1', 'away': '0'},
+                    'events': [
+                        {'minute': "9'", 'type': 'Asistencia', 'player': 'Lira E.', 'team': 'Mexico'},
+                    ],
+                }
+            ],
+        }
+        report = {
+            'status': 200,
+            'event_id': 'abc123',
+            'title': 'Mexico gana en el debut',
+            'credit': 'Flashscore Noticias',
+            'paragraphs': ['Mexico fue superior de principio a fin.'],
+        }
+
+        with patch('core.views.find_flashscore_match_for_partido', return_value=scraped_match):
+            with patch('core.views.build_flashscore_lineups_report', return_value=lineups):
+                with patch('core.views.build_flashscore_statistics_report', return_value=statistics):
+                    with patch('core.views.build_flashscore_summary_report', return_value=summary):
+                        with patch('core.views.build_flashscore_report', return_value=report):
+                            response = self.client.get(f'/api/partidos/{partido.id}/seguimiento/')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['scraper']['found'])
+        self.assertEqual(data['scraper']['event_id'], 'abc123')
+        self.assertEqual(data['marcador'], '2 - 0')
+        self.assertTrue(data['scraper']['lineups_available'])
+        self.assertTrue(data['scraper']['statistics_available'])
+        self.assertTrue(data['scraper']['summary_available'])
+        self.assertTrue(data['scraper']['report_available'])
+        self.assertEqual(data['scraper']['report']['title'], 'Mexico gana en el debut')
+        self.assertEqual(data['scraper']['summary']['periods'][0]['events'][0]['player'], 'Lira E.')
+        self.assertEqual(data['scraper']['statistics']['periods'][0]['groups'][0]['stats'][0]['label'], 'Posesión')
+        self.assertEqual(
+            data['scraper']['lineups']['Mexico']['starters'][0]['name'],
+            'Raul Rangel',
+        )
+        self.assertEqual(
+            data['scraper']['lineups']['Mexico']['starters'][0]['substitution_player_number'],
+            '13',
+        )
+        self.assertEqual(data['scraper']['lineups']['Mexico']['bench'][0]['name'], 'Guillermo Ochoa')
+        self.assertEqual(data['scraper']['lineups']['Mexico']['bench'][0]['substitution_kind'], 'in')
+
+    def test_api_partido_seguimiento_oculta_error_de_conexion_scraper(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.get(numero=15)
+
+        with patch('core.views.find_flashscore_match_for_partido', side_effect=ConnectionError('detalle interno')):
+            response = self.client.get(f'/api/partidos/{partido.id}/seguimiento/')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertFalse(data['scraper']['available'])
+        self.assertFalse(data['scraper']['found'])
+        self.assertEqual(data['scraper']['status'], 'sin_conexion')
+        self.assertIn('No se pudo conectar con Flashscore', data['scraper']['message'])
+        self.assertNotIn('detalle interno', data['scraper']['message'])
 
     def test_sync_match_result_actualiza_cero_goles_y_estado(self):
         partido = Partido.objects.get(numero=1)
@@ -823,5 +966,340 @@ class MundialHomeTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Prediccion.objects.filter(usuario=usuario).count(), 0)
+
+    def test_scraper_construye_url_desde_variable_de_entorno(self):
+        from django.test import override_settings
+
+        from core.site_scraper import build_scrape_url
+
+        with override_settings(SCRAPER_BASE_URL='https://example.com/mundial/'):
+            self.assertEqual(
+                build_scrape_url('/partidos/1'),
+                'https://example.com/mundial/partidos/1',
+            )
+
+        with override_settings(SCRAPER_BASE_URL='https://example.com/partido/demo?mid=abc'):
+            self.assertEqual(
+                build_scrape_url(''),
+                'https://example.com/partido/demo?mid=abc',
+            )
+
+    def test_scraper_parsea_metadata_basica(self):
+        from unittest.mock import patch
+
+        from django.test import override_settings
+
+        from core.site_scraper import scrape_page
+
+        html = (
+            '<html><head><title>Partido demo</title>'
+            '<meta name="description" content="Resumen del partido"></head>'
+            '<body><h1>Argentina vs Algeria</h1><a href="/lineups">Formaciones</a></body></html>'
+        )
+
+        with override_settings(SCRAPER_BASE_URL='https://example.com/'):
+            with patch('core.site_scraper.fetch_html', return_value=(200, html)):
+                page = scrape_page('/partidos/19')
+
+        self.assertEqual(page.url, 'https://example.com/partidos/19')
+        self.assertEqual(page.status, 200)
+        self.assertEqual(page.title, 'Partido demo')
+        self.assertEqual(page.description, 'Resumen del partido')
+        self.assertEqual(page.h1, ['Argentina vs Algeria'])
+        self.assertEqual(page.links[0]['href'], 'https://example.com/lineups')
+        self.assertEqual(page.links[0]['text'], 'Formaciones')
+
+    def test_scraper_extrae_meta_de_flashscore(self):
+        from unittest.mock import patch
+
+        from django.test import override_settings
+
+        from core.site_scraper import scrape_page
+
+        html = (
+            '<html><head>'
+            '<meta property="og:title" content="España - Cabo Verde 0-0">'
+            '<meta property="og:description" content="MUNDIAL: Campeonato del Mundo - Jornada 1">'
+            '</head><body><script>window.environment = {"event_id_c":"Iiqjm5Pq"}</script></body></html>'
+        )
+
+        with override_settings(SCRAPER_BASE_URL='https://example.com/'):
+            with patch('core.site_scraper.fetch_html', return_value=(200, html)):
+                page = scrape_page('/partido')
+
+        self.assertEqual(page.event_id, 'Iiqjm5Pq')
+        self.assertEqual(page.match['home'], 'España')
+        self.assertEqual(page.match['away'], 'Cabo Verde')
+        self.assertEqual(page.match['score'], '0-0')
+        self.assertEqual(page.match['competition'], 'MUNDIAL')
+        self.assertEqual(page.match['round'], 'Campeonato del Mundo - Jornada 1')
+
+    def test_scraper_parsea_feed_de_formaciones_flashscore(self):
+        from core.site_scraper import parse_flashscore_feed
+
+        rows = parse_flashscore_feed('LD÷1-4-3-3¬LI÷Cubarsí P.¬LJ÷22¬LQ÷España¬LL÷3¬~')
+
+        self.assertEqual(rows[0]['LD'], '1-4-3-3')
+        self.assertEqual(rows[0]['LI'], 'Cubarsí P.')
+        self.assertEqual(rows[0]['LJ'], '22')
+
+    def test_scraper_asigna_entrenador_a_equipo_y_no_a_nacionalidad(self):
+        from unittest.mock import patch
+
+        from core.site_scraper import build_flashscore_lineups_report, summarize_lineups_for_tracking
+
+        rows = [
+            {'LC': '1'},
+            {'LQ': 'Argentina', 'LD': '1-4-4-2', 'LI': 'Messi L.', 'LJ': '10', 'LL': '10'},
+            {'LC': '2'},
+            {'LQ': 'Argelia', 'LD': '1-4-3-3', 'LI': 'Mandi A.', 'LJ': '2', 'LL': '3'},
+            {'LC': '1'},
+            {'LQ': 'Argentina', 'LD': '1-4-4-2', 'LI': 'Scaloni L.', 'LJ': ''},
+            {'LC': '2'},
+            {'LQ': 'Suiza', 'LD': '1-4-3-3', 'LI': 'Petkovic V.', 'LJ': ''},
+        ]
+
+        with patch('core.site_scraper.fetch_flashscore_lineups', return_value=(200, rows)):
+            report = build_flashscore_lineups_report('UP9bEsOr', 'https://example.com/partido')
+
+        summarized = summarize_lineups_for_tracking(report)
+
+        self.assertIn('Argentina', summarized)
+        self.assertIn('Argelia', summarized)
+        self.assertNotIn('Suiza', summarized)
+        self.assertIn('Petkovi', summarized['Argelia']['coach']['name'])
+        self.assertEqual(summarized['Argelia']['coach']['flashscore_name'], 'Petkovic V.')
+        self.assertEqual(summarized['Argelia']['coach']['nationality'], 'Suiza')
+
+    def test_scraper_ordena_formaciones_por_posicion_de_base(self):
+        from core.site_scraper import summarize_lineups_for_tracking
+
+        report = {
+            'teams': {
+                'Argentina': {
+                    'formation': '1-4-4-2',
+                    'starters': [
+                        {'db_match': 'Lionel Messi', 'number': '10', 'db_position': 'Delantero'},
+                        {'db_match': 'Cristian Romero', 'number': '13', 'db_position': 'Defensa'},
+                        {'db_match': 'Emiliano Martinez', 'number': '23', 'db_position': 'Portero'},
+                        {'db_match': 'Enzo Fernandez', 'number': '24', 'db_position': 'Mediocentro'},
+                    ],
+                    'bench': [
+                        {'db_match': 'Julian Alvarez', 'number': '9', 'db_position': 'Delantero'},
+                        {'db_match': 'Nicolas Otamendi', 'number': '19', 'db_position': 'Defensa'},
+                    ],
+                    'coach': {},
+                }
+            }
+        }
+
+        summarized = summarize_lineups_for_tracking(report)
+
+        self.assertEqual(
+            [player['name'] for player in summarized['Argentina']['starters']],
+            ['Emiliano Martinez', 'Cristian Romero', 'Enzo Fernandez', 'Lionel Messi'],
+        )
+        self.assertEqual(
+            [player['name'] for player in summarized['Argentina']['bench']],
+            ['Nicolas Otamendi', 'Julian Alvarez'],
+        )
+
+    def test_scraper_parsea_estadisticas_flashscore(self):
+        from core.site_scraper import parse_flashscore_statistics_rows
+
+        rows = [
+            {'SE': 'Partido'},
+            {'SF': 'Estadísticas principales'},
+            {'SD': '12', 'SG': 'Posesión', 'SH': '61%', 'SI': '39%'},
+            {'SD': '34', 'SG': 'Remates totales', 'SH': '15', 'SI': '7'},
+        ]
+
+        report = parse_flashscore_statistics_rows(rows)
+
+        self.assertEqual(report['periods'][0]['name'], 'Partido')
+        self.assertEqual(report['periods'][0]['groups'][0]['name'], 'Estadísticas principales')
+        self.assertEqual(report['periods'][0]['groups'][0]['stats'][0]['label'], 'Posesión')
+        self.assertEqual(report['periods'][0]['groups'][0]['stats'][0]['home'], '61%')
+        self.assertEqual(report['periods'][0]['groups'][0]['stats'][0]['away'], '39%')
+
+    def test_scraper_parsea_resumen_flashscore(self):
+        from core.site_scraper import parse_flashscore_summary_rows
+
+        rows = [
+            {'AC': '1er Tiempo', 'IG': '1', 'IH': '0'},
+            {
+                'III': 'GlbPo4ec',
+                'IA': '1',
+                'IB': "9'",
+                'IE': '8',
+                'INX': '1',
+                'IOX': '0',
+                'IF': 'Lira E.',
+                'ICT': '',
+                'IK': 'Asistencia',
+                'IM': '2V4B2zM9',
+            },
+            {
+                'III': 'card-yellow',
+                'IA': '2',
+                'IB': "31'",
+                'IE': '1',
+                'IF': 'Mokoena T.',
+                'ICT': '',
+                'IK': 'Tarjeta amarilla',
+            },
+            {
+                'III': 'sub-one',
+                'IA': '1',
+                'IB': "70'",
+                'IE': '7',
+                'IF': 'Pineda O.',
+                'ICT': 'Entra por Lira E.',
+                'IK': 'Sustitucion - Entra',
+            },
+        ]
+        commentary_rows = [
+            {
+                'MB': "9'",
+                'MC': 'soccer-ball',
+                'MD': 'Lira E. recibe un pase y define abajo para el 1:0.',
+            }
+        ]
+
+        report = parse_flashscore_summary_rows(
+            rows,
+            home_team='Mexico',
+            away_team='South Africa',
+            commentary_rows=commentary_rows,
+        )
+
+        event = report['periods'][0]['events'][0]
+        self.assertEqual(report['periods'][0]['name'], '1er Tiempo')
+        self.assertEqual(report['periods'][0]['score']['home'], '1')
+        self.assertEqual(event['team_side'], 'home')
+        self.assertEqual(event['team'], 'Mexico')
+        self.assertEqual(event['minute'], "9'")
+        self.assertEqual(event['type'], 'Asistencia')
+        self.assertEqual(event['display_type'], 'Gol')
+        self.assertEqual(event['category'], 'goal')
+        self.assertEqual(event['assist_player'], 'Lira E.')
+        self.assertEqual(event['description'], 'Lira E. recibe un pase y define abajo para el 1:0.')
+        self.assertEqual(event['score']['home'], '1')
+        self.assertEqual(report['periods'][0]['events'][1]['category'], 'card')
+        self.assertEqual(report['periods'][0]['events'][1]['card_color'], 'yellow')
+        self.assertEqual(report['periods'][0]['events'][2]['category'], 'substitution')
+
+    def test_scraper_parsea_informe_flashscore(self):
+        from core.site_scraper import parse_flashscore_report_content
+
+        content = (
+            '[p][b]Argentina supero a [a href="/jugador/messi"]Lionel Messi[/a].[/b][/p]'
+            '[p]El segundo tiempo tuvo control de la Albiceleste.[/p]'
+        )
+
+        self.assertEqual(
+            parse_flashscore_report_content(content),
+            [
+                'Argentina supero a Lionel Messi.',
+                'El segundo tiempo tuvo control de la Albiceleste.',
+            ],
+        )
+
+    def test_scraper_extrae_feed_inicial_de_flashscore(self):
+        from core.site_scraper import extract_flashscore_initial_feed
+
+        html = '''
+            <script>
+                cjs.initialFeeds["fixtures"] = {
+                    data: `SA÷1¬~ZA÷MUNDIAL: Campeonato del Mundo¬~AA÷8nrACRTs¬AD÷1781798400¬AB÷1¬AE÷República Checa¬AF÷Sudáfrica¬WU÷republica-checa¬WV÷sudafrica¬PX÷6LHwBDGU¬PY÷W2ijYvlr¬~`,
+                    allEventsCount: 80,
+                    seasonId: 2026
+                };
+            </script>
+        '''
+
+        feed = extract_flashscore_initial_feed(html, 'fixtures')
+
+        self.assertEqual(feed['all_events_count'], 80)
+        self.assertEqual(feed['season_id'], 2026)
+        self.assertEqual(feed['rows'][2]['AA'], '8nrACRTs')
+        self.assertEqual(feed['rows'][2]['AE'], 'República Checa')
+
+    def test_scraper_extrae_links_del_mundial_desde_feed(self):
+        from core.site_scraper import extract_flashscore_competition_matches
+
+        rows = [
+            {'ZA': 'MUNDIAL: Campeonato del Mundo', 'ZL': '/futbol/mundial/campeonato-del-mundo/'},
+            {
+                'AA': 'ALxYcMw2',
+                'AB': '1',
+                'AD': '1781636400',
+                'AE': 'Francia',
+                'AF': 'Senegal',
+                'WU': 'francia',
+                'WV': 'senegal',
+                'PX': 'QkGeVG1n',
+                'PY': 'hOIsJLJr',
+            },
+            {'ZA': 'MUNDIAL: Amistosos de Clubs'},
+            {'AA': 'IRpyFfSF', 'AE': 'Pari NN', 'AF': 'Ufa'},
+        ]
+
+        matches = extract_flashscore_competition_matches(rows)
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]['home'], 'Francia')
+        self.assertEqual(matches[0]['away'], 'Senegal')
+        self.assertEqual(matches[0]['status'], 'programado')
+        self.assertEqual(
+            matches[0]['url'],
+            'https://www.flashscore.com.ar/partido/futbol/francia-QkGeVG1n/senegal-hOIsJLJr/?mid=ALxYcMw2',
+        )
+
+    def test_scraper_usa_base_url_para_partidos_del_mundial(self):
+        from unittest.mock import patch
+
+        from django.test import override_settings
+
+        from core.site_scraper import fetch_flashscore_worldcup_matches
+
+        html = '''
+            <script>
+                cjs.initialFeeds["fixtures"] = {
+                    data: `SA÷1¬~ZA÷MUNDIAL: Campeonato del Mundo¬~AA÷8nrACRTs¬AD÷1781798400¬AB÷1¬AE÷República Checa¬AF÷Sudáfrica¬WU÷republica-checa¬WV÷sudafrica¬PX÷6LHwBDGU¬PY÷W2ijYvlr¬~`,
+                    allEventsCount: 80,
+                    seasonId: 2026
+                };
+            </script>
+        '''
+
+        with override_settings(SCRAPER_BASE_URL='https://www.flashscore.com.ar/futbol/mundial/campeonato-del-mundo/partidos/'):
+            with patch('core.site_scraper.fetch_html', return_value=(200, html)):
+                report = fetch_flashscore_worldcup_matches()
+
+        self.assertEqual(report['source'], 'page')
+        self.assertEqual(report['block'], 'fixtures')
+        self.assertEqual(report['all_events_count'], 80)
+        self.assertEqual(len(report['matches']), 1)
+        self.assertEqual(report['matches'][0]['home'], 'República Checa')
+        self.assertEqual(report['matches'][0]['away'], 'Sudáfrica')
+
+    def test_scraper_empareja_partido_viejo_con_nombres_en_espanol(self):
+        from core.site_scraper import flashscore_match_for_partido_in_matches
+
+        partido = Partido.objects.get(numero=2)
+        match = flashscore_match_for_partido_in_matches(
+            partido,
+            [
+                {
+                    'home': 'Corea del Sur',
+                    'away': 'República Checa',
+                    'event_id': 'CGdvIm6K',
+                }
+            ],
+        )
+
+        self.assertIsNotNone(match)
+        self.assertEqual(match['event_id'], 'CGdvIm6K')
 
 # Create your tests here.

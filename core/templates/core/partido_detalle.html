@@ -325,22 +325,20 @@
     }
 
     .match-commentary-strip {
-        display: flex;
-        gap: 0.55rem;
+        display: grid;
+        gap: 0.5rem;
         max-width: 100%;
-        overflow-x: auto;
-        overscroll-behavior-inline: contain;
-        scroll-snap-type: x proximity;
-        -webkit-overflow-scrolling: touch;
-        padding: 0.1rem 0 0.35rem;
+        max-height: 28rem;
+        overflow-y: auto;
+        overscroll-behavior-block: contain;
+        padding: 0.1rem 0.2rem 0.1rem 0;
     }
 
     .match-commentary-card {
-        flex: 0 0 16rem;
-        scroll-snap-align: start;
         display: grid;
+        grid-template-columns: 3.8rem minmax(0, 1fr);
         gap: 0.32rem;
-        min-height: 5.4rem;
+        align-items: start;
         padding: 0.65rem;
         border: 1px solid color-mix(in srgb, var(--team-local, var(--blue)) 12%, var(--line));
         border-radius: 8px;
@@ -352,6 +350,14 @@
         color: color-mix(in srgb, var(--team-local, var(--blue)) 70%, var(--ink));
         font-size: 0.75rem;
         font-weight: 900;
+    }
+
+    .match-commentary-period {
+        display: block;
+        margin-top: 0.18rem;
+        color: var(--muted);
+        font-size: 0.68rem;
+        font-weight: 800;
     }
 
     .match-commentary-text {
@@ -912,6 +918,15 @@
         text-decoration: underline;
     }
 
+    .standings tr.live-team td {
+        background: color-mix(in srgb, #16a34a 11%, #fff);
+        font-weight: 900;
+    }
+
+    .standings tr.live-team td:first-child {
+        border-left: 4px solid #16a34a;
+    }
+
     .group-fixtures {
         display: grid;
         gap: 0.55rem;
@@ -937,6 +952,15 @@
     .group-fixture:hover {
         border-color: color-mix(in srgb, var(--fixture-local, var(--team-local, var(--blue))) 28%, var(--line));
         transform: translateY(-1px);
+    }
+
+    .group-fixture.current-live {
+        border-color: rgba(205, 32, 44, 0.35);
+        border-left-color: #cd202c;
+        background:
+            linear-gradient(135deg, color-mix(in srgb, #cd202c 11%, #fff), color-mix(in srgb, var(--fixture-local-third, #fff) 7%, #fff) 30%, color-mix(in srgb, var(--fixture-visitor, var(--team-visitor, var(--green))) 10%, #fff) 70%, color-mix(in srgb, var(--fixture-visitor-third, #fff) 6%, #fff)),
+            #fff;
+        box-shadow: 0 12px 24px rgba(205, 32, 44, 0.16);
     }
 
     .group-fixture strong {
@@ -967,10 +991,27 @@
     }
 
     .fixture-meta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.3rem;
+        flex-wrap: wrap;
         color: var(--muted);
         font-size: 0.78rem;
         font-weight: 800;
         text-align: center;
+    }
+
+    .fixture-live-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.24rem;
+        padding: 0.2rem 0.44rem;
+        border-radius: 999px;
+        background: #cd202c;
+        color: #fff;
+        font-size: 0.68rem;
+        text-transform: uppercase;
     }
 
     .favorite-form {
@@ -1201,7 +1242,7 @@
         <section class="standings-card detail-section">
             <h2>Grupo {{ partido.grupo }}</h2>
             <div class="table-wrap">
-                <table class="standings">
+                <table class="standings" data-detail-standings>
                     <thead>
                         <tr>
                             <th>#</th>
@@ -1214,7 +1255,7 @@
                     </thead>
                     <tbody>
                         {% for fila in tabla_grupo %}
-                            <tr>
+                            <tr data-team-row data-team-id="{{ fila.equipo.id }}" class="{% if fila.equipo.id in live_team_ids %}live-team{% endif %}">
                                 <td>{{ forloop.counter }}</td>
                                 <td>
                                     <span class="team-cell">
@@ -1228,10 +1269,10 @@
                                         <span class="standings-team-name"><a href="{% url 'core:seleccion_detalle' fila.equipo.id %}">{{ fila.equipo.nombre }}</a></span>
                                     </span>
                                 </td>
-                                <td>{{ fila.pj }}</td>
-                                <td>{{ fila.gf }}-{{ fila.gc }}</td>
-                                <td>{{ fila.dg }}</td>
-                                <td><strong>{{ fila.pts }}</strong></td>
+                                <td data-stat="pj">{{ fila.pj }}</td>
+                                <td data-stat="gf_gc">{{ fila.gf }}-{{ fila.gc }}</td>
+                                <td data-stat="dg">{{ fila.dg }}</td>
+                                <td><strong data-stat="pts">{{ fila.pts }}</strong></td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -1245,7 +1286,7 @@
             <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-calendar2-week"></i></span>Proximos del Grupo {{ partido.grupo }}</span></h2>
             <div class="group-fixtures">
                 {% for item in proximos_grupo %}
-                    <a class="group-fixture" href="{% url 'core:partido_detalle' item.id %}" style="--fixture-local: {{ item.color_local }}; --fixture-visitor: {{ item.color_visitante }}; --fixture-local-third: {{ item.color_local_terciario }}; --fixture-visitor-third: {{ item.color_visitante_terciario }};">
+                    <a class="group-fixture {% if item.id == partido.id %}current-live{% endif %}" href="{% url 'core:partido_detalle' item.id %}" style="--fixture-local: {{ item.color_local }}; --fixture-visitor: {{ item.color_visitante }}; --fixture-local-third: {{ item.color_local_terciario }}; --fixture-visitor-third: {{ item.color_visitante_terciario }};">
                         <span class="group-fixture-title">
                             <span class="mini-flag" aria-hidden="true">
                                 {% if item.bandera_local_url %}
@@ -1263,7 +1304,14 @@
                                 {% endif %}
                             </span>
                         </span>
-                        <span class="fixture-meta">{{ item.fecha_argentina|date:"d/m" }} - {{ item.horario_argentina }} · Partido {{ item.numero }}</span>
+                        <span class="fixture-meta">
+                            {% if item.id == partido.id %}
+                                <span class="fixture-live-badge"><span class="live-dot" aria-hidden="true"></span>En vivo</span>
+                                <span data-current-fixture-score>{{ detail_marcador }}</span>
+                            {% else %}
+                                <span>{{ item.fecha_argentina|date:"d/m" }} - {{ item.horario_argentina }} · Partido {{ item.numero }}</span>
+                            {% endif %}
+                        </span>
                     </a>
                 {% endfor %}
             </div>
@@ -1326,6 +1374,8 @@
         const reportContainer = root.querySelector('[data-report-container]');
         const trackingTabs = root.querySelectorAll('[data-tracking-tab]');
         const trackingPanels = root.querySelectorAll('[data-tracking-panel]');
+        const detailStandings = document.querySelector('[data-detail-standings]');
+        const currentFixtureScores = document.querySelectorAll('[data-current-fixture-score]');
 
         function formatUpdated(value) {
             if (!value) {
@@ -1400,6 +1450,15 @@
             return Boolean(summary && (summary.periods || []).some((period) => {
                 return (period.commentary || []).some((item) => item.description);
             }));
+        }
+
+        function commentaryMinuteValue(value) {
+            const minute = text(value);
+            const match = minute.match(/(\d+)(?:\s*\+\s*(\d+))?/);
+            if (!match) {
+                return -1;
+            }
+            return Number(match[1]) + (match[2] ? Number(match[2]) / 100 : 0);
         }
 
         function setTrackingTabAvailability(name, available) {
@@ -1483,27 +1542,36 @@
             if (!commentaryContainer || !summary) {
                 return;
             }
-            const periods = (summary.periods || []).map((period) => {
-                return {
-                    name: period.name || 'Partido',
-                    score: period.score || {},
-                    commentary: (period.commentary || []).filter((item) => item.description),
-                };
-            }).filter((period) => period.commentary.length);
-            if (!periods.length) {
+            const comments = [];
+            (summary.periods || []).forEach((period, periodIndex) => {
+                (period.commentary || []).forEach((item, itemIndex) => {
+                    if (!item.description) {
+                        return;
+                    }
+                    comments.push({
+                        period: period.name || 'Partido',
+                        minute: item.minute || '-',
+                        description: item.description,
+                        order: commentaryMinuteValue(item.minute),
+                        fallbackOrder: periodIndex * 1000 + itemIndex,
+                    });
+                });
+            });
+            if (!comments.length) {
                 commentaryContainer.hidden = true;
                 return;
             }
+            comments.sort((a, b) => {
+                if (b.order !== a.order) {
+                    return b.order - a.order;
+                }
+                return b.fallbackOrder - a.fallbackOrder;
+            });
             commentaryContainer.hidden = false;
-            commentaryContainer.innerHTML = '<div class="match-summary-shell">' + periods.map((period) => {
-                const score = period.score && period.score.home !== '' && period.score.away !== ''
-                    ? '<span>' + html(period.score.home) + ' - ' + html(period.score.away) + '</span>'
-                    : '';
-                const commentary = period.commentary.map((item) => {
-                    return '<article class="match-commentary-card"><span class="match-commentary-minute">' + html(item.minute || '-') + '</span><span class="match-commentary-text">' + html(item.description) + '</span></article>';
-                }).join('');
-                return '<section class="match-period"><div class="match-period-title"><span>' + html(period.name) + '</span>' + score + '</div><div class="match-commentary-strip" aria-label="Comentarios del periodo">' + commentary + '</div></section>';
-            }).join('') + '</div>';
+            const commentary = comments.map((item) => {
+                return '<article class="match-commentary-card"><span class="match-commentary-minute">' + html(item.minute) + '<span class="match-commentary-period">' + html(item.period) + '</span></span><span class="match-commentary-text">' + html(item.description) + '</span></article>';
+            }).join('');
+            commentaryContainer.innerHTML = '<div class="match-summary-shell"><section class="match-period"><div class="match-period-title"><span>Comentarios recientes</span></div><div class="match-commentary-strip" aria-label="Comentarios del partido">' + commentary + '</div></section></div>';
         }
 
         function renderReport(report) {
@@ -1648,6 +1716,37 @@
             });
         }
 
+        function updateDetailStandings(tabla, jugando) {
+            if (!detailStandings || !Array.isArray(tabla)) {
+                return;
+            }
+            const tbody = detailStandings.querySelector('tbody');
+            if (!tbody) {
+                return;
+            }
+            const jugandoSet = new Set((jugando || []).map(String));
+            tabla.forEach((fila) => {
+                const row = tbody.querySelector(`[data-team-row][data-team-id="${fila.team_id}"]`);
+                if (!row) {
+                    return;
+                }
+                row.classList.toggle('live-team', jugandoSet.has(String(fila.team_id)));
+                const stats = {
+                    pj: fila.pj,
+                    gf_gc: fila.gf !== undefined && fila.gc !== undefined ? `${fila.gf}-${fila.gc}` : undefined,
+                    dg: fila.dg,
+                    pts: fila.pts,
+                };
+                Object.entries(stats).forEach(([stat, value]) => {
+                    const cell = row.querySelector(`[data-stat="${stat}"]`);
+                    if (cell && value !== undefined) {
+                        cell.textContent = value;
+                    }
+                });
+                tbody.appendChild(row);
+            });
+        }
+
         function updateLiveDetail() {
             fetch('{% url 'core:api_partido_seguimiento' partido.id %}', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -1660,6 +1759,10 @@
                     scoreLabels.forEach((label) => {
                         label.textContent = partido.marcador;
                     });
+                    currentFixtureScores.forEach((label) => {
+                        label.textContent = partido.marcador;
+                    });
+                    updateDetailStandings(partido.tabla_grupo, partido.jugando);
                     statusLabels.forEach((label) => {
                         label.classList.remove('programado', 'en_vivo', 'finalizado');
                         label.classList.add(partido.estado);

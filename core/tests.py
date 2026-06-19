@@ -369,6 +369,8 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, '/api/partidos-vivo/')
         self.assertContains(response, 'live-indicator')
         self.assertContains(response, 'livePulse')
+        self.assertContains(response, 'data-group-live-match')
+        self.assertContains(response, 'actualizarPartidosTablaVivo')
 
     def test_home_tarjetas_usan_marcador_del_scraper_en_render_inicial(self):
         from unittest.mock import patch
@@ -531,6 +533,62 @@ class MundialHomeTests(TestCase):
         self.assertEqual(fila_local['pts'], 3)
         self.assertEqual(fila_local['pj'], 1)
 
+    def test_api_partidos_vivo_persiste_finalizado_y_pide_refresco(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.select_related('equipo_local', 'equipo_visitante').get(numero=25)
+        partido.estado = Partido.ESTADO_EN_VIVO
+        partido.goles_local = 1
+        partido.goles_visitante = 0
+        partido.save(update_fields=['estado', 'goles_local', 'goles_visitante'])
+        scraped = {
+            'id': partido.id,
+            'partido': partido,
+            'match': {
+                'status': 'finalizado',
+                'score': {'home': '2', 'away': '1'},
+            },
+        }
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[scraped]):
+            response = self.client.get('/api/partidos-vivo/', HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['refresh_required'])
+        self.assertEqual(data['partidos'][0]['estado'], Partido.ESTADO_FINALIZADO)
+        self.assertEqual(data['partidos'][0]['marcador'], '2 - 1')
+        partido.refresh_from_db()
+        self.assertEqual(partido.estado, Partido.ESTADO_FINALIZADO)
+        self.assertEqual(partido.goles_local, 2)
+        self.assertEqual(partido.goles_visitante, 1)
+
+    def test_home_mueve_scraper_finalizado_a_partidos_anteriores(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.select_related('equipo_local', 'equipo_visitante').get(numero=25)
+        partido.estado = Partido.ESTADO_EN_VIVO
+        partido.goles_local = 1
+        partido.goles_visitante = 0
+        partido.save(update_fields=['estado', 'goles_local', 'goles_visitante'])
+        scraped = {
+            'id': partido.id,
+            'partido': partido,
+            'match': {
+                'status': 'finalizado',
+                'score': {'home': '2', 'away': '1'},
+            },
+        }
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[scraped]):
+            response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        partido.refresh_from_db()
+        self.assertEqual(partido.estado, Partido.ESTADO_FINALIZADO)
+        self.assertIn(partido.id, [item.id for item in response.context['anteriores']])
+        self.assertNotIn(partido.id, [item.id for item in response.context['proximos']])
+
     def test_partido_detalle_muestra_datos_de_seguimiento(self):
         partido = Partido.objects.get(numero=1)
         partido.estado = Partido.ESTADO_EN_VIVO
@@ -580,6 +638,14 @@ class MundialHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<div class="detail-score" data-live-score>4 - 1</div>', html=True)
         self.assertContains(response, 'detail-status en_vivo')
+        self.assertContains(response, 'data-detail-standings')
+        self.assertContains(response, 'data-team-row')
+        self.assertContains(response, 'live-team')
+        self.assertContains(response, 'current-live')
+        self.assertContains(response, 'data-current-fixture-score')
+        self.assertContains(response, '<td data-stat="gf_gc">4-1</td>', html=True)
+        self.assertContains(response, 'Comentarios recientes')
+        self.assertContains(response, 'commentaryMinuteValue')
 
     def test_api_partido_seguimiento_usa_scraper(self):
         from unittest.mock import patch
@@ -677,6 +743,9 @@ class MundialHomeTests(TestCase):
         self.assertTrue(data['scraper']['found'])
         self.assertEqual(data['scraper']['event_id'], 'abc123')
         self.assertEqual(data['marcador'], '2 - 0')
+        fila_mexico = next(fila for fila in data['tabla_grupo'] if fila['team_id'] == partido.equipo_local_id)
+        self.assertEqual(fila_mexico['gf'], 2)
+        self.assertEqual(fila_mexico['pts'], 3)
         self.assertTrue(data['scraper']['lineups_available'])
         self.assertTrue(data['scraper']['statistics_available'])
         self.assertTrue(data['scraper']['summary_available'])
@@ -736,6 +805,8 @@ class MundialHomeTests(TestCase):
         data = response.json()
         self.assertEqual(data['marcador'], '0 - 0')
         self.assertEqual(data['estado'], 'en_vivo')
+        self.assertIn(partido.equipo_local_id, data['jugando'])
+        self.assertIn(partido.equipo_visitante_id, data['jugando'])
         self.assertFalse(data['scraper']['summary_available'])
         self.assertTrue(data['scraper']['commentary_available'])
         self.assertEqual(

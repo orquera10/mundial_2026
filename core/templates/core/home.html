@@ -1059,6 +1059,60 @@
         border-left: 4px solid #16a34a;
     }
 
+    .standings-live-match {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.65rem;
+        padding: 0.6rem 0.72rem;
+        margin-bottom: 0.55rem;
+        border: 1px solid rgba(205, 32, 44, 0.22);
+        border-left: 4px solid #cd202c;
+        border-radius: 8px;
+        background: #fff7f7;
+        color: var(--ink);
+        font-size: 0.82rem;
+        font-weight: 850;
+    }
+
+    .standings-live-match[hidden] {
+        display: none;
+    }
+
+    .standings-live-main {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-width: 0;
+    }
+
+    .standings-live-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.28rem;
+        color: #cd202c;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .standings-live-teams {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .standings-live-score {
+        min-width: 3.6rem;
+        padding: 0.34rem 0.48rem;
+        border-radius: 8px;
+        background: #172033;
+        color: #fff;
+        text-align: center;
+        font-size: 0.86rem;
+        font-weight: 950;
+    }
+
     .mini-flag {
         display: inline-grid;
         place-items: center;
@@ -1447,6 +1501,13 @@
         </summary>
         <div class="match-list">
             <div class="table-wrap">
+                <div class="standings-live-match" data-group-live-match="{{ seccion.titulo|cut:'Grupo ' }}" hidden>
+                    <span class="standings-live-main">
+                        <span class="standings-live-label"><span class="live-dot" aria-hidden="true"></span>En vivo</span>
+                        <span class="standings-live-teams" data-live-match-teams></span>
+                    </span>
+                    <span class="standings-live-score" data-live-match-score></span>
+                </div>
                 <table class="standings" data-group-standings="{{ seccion.titulo|cut:'Grupo ' }}">
                     <thead>
                         <tr>
@@ -1494,6 +1555,35 @@
 
 <script>
     const LIVE_REFRESH_MS = 30000;
+
+    function actualizarPartidosTablaVivo(partidos) {
+        const enVivoPorGrupo = new Map();
+        (partidos || []).forEach(partido => {
+            if (partido.estado === 'en_vivo' && partido.grupo) {
+                enVivoPorGrupo.set(String(partido.grupo), partido);
+            }
+        });
+        document.querySelectorAll('[data-group-live-match]').forEach(panel => {
+            const grupo = String(panel.dataset.groupLiveMatch || '');
+            const partido = enVivoPorGrupo.get(grupo);
+            panel.hidden = !partido;
+            if (!partido) {
+                return;
+            }
+            const localRow = document.querySelector(`[data-group-standings="${grupo}"] [data-team-row][data-team-id="${partido.equipo_local_id}"]`);
+            const visitanteRow = document.querySelector(`[data-group-standings="${grupo}"] [data-team-row][data-team-id="${partido.equipo_visitante_id}"]`);
+            const local = localRow ? localRow.querySelector('.standings-team-name')?.textContent.trim() : 'Local';
+            const visitante = visitanteRow ? visitanteRow.querySelector('.standings-team-name')?.textContent.trim() : 'Visitante';
+            const teams = panel.querySelector('[data-live-match-teams]');
+            const score = panel.querySelector('[data-live-match-score]');
+            if (teams) {
+                teams.textContent = `${local} vs ${visitante}`;
+            }
+            if (score) {
+                score.textContent = partido.marcador || '-';
+            }
+        });
+    }
 
     function actualizarTablaVivo(grupo, filas, jugando) {
         const table = document.querySelector(`[data-group-standings="${grupo}"]`);
@@ -1562,9 +1652,13 @@
                 });
             });
             if (!Array.isArray(payload)) {
+                actualizarPartidosTablaVivo(partidos);
                 Object.entries(payload.tablas || {}).forEach(([grupo, filas]) => {
                     actualizarTablaVivo(grupo, filas, (payload.jugando || {})[grupo] || []);
                 });
+                if (payload.refresh_required) {
+                    window.location.reload();
+                }
             }
         })
         .catch(() => {});

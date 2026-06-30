@@ -41,6 +41,10 @@
             </span>
         </div>
 
+        {% if partido.nota_penales %}
+            <span class="score-note">{{ partido.nota_penales }}</span>
+        {% endif %}
+
         {% if prediccion %}
             <span class="favorite-prediction {{ prediccion.comparacion_estado }}"><i class="bi bi-bullseye" aria-hidden="true"></i>{{ prediccion.goles_local }}-{{ prediccion.goles_visitante }}</span>
         {% endif %}

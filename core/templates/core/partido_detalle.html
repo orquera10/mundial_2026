@@ -1161,7 +1161,12 @@
                 <span>{{ partido.local_nombre }}</span>
             {% endif %}
         </div>
-        <div class="detail-score" data-live-score>{{ detail_marcador }}</div>
+        <div>
+            <div class="detail-score" data-live-score>{{ detail_marcador }}</div>
+            {% if partido.nota_penales %}
+                <div class="detail-score-note" data-live-score-note>{{ partido.nota_penales }}</div>
+            {% endif %}
+        </div>
         <div class="detail-team">
             <span class="detail-flag" aria-hidden="true">
                 {% if partido.bandera_visitante_url %}
@@ -1759,6 +1764,11 @@
                     scoreLabels.forEach((label) => {
                         label.textContent = partido.marcador;
                     });
+                    const scoreNote = document.querySelector('[data-live-score-note]');
+                    if (scoreNote) {
+                        scoreNote.textContent = partido.nota_penales || '';
+                        scoreNote.hidden = !partido.nota_penales;
+                    }
                     currentFixtureScores.forEach((label) => {
                         label.textContent = partido.marcador;
                     });

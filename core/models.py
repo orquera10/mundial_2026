@@ -426,9 +426,94 @@ class Partido(models.Model):
 
     @property
     def marcador(self):
+        marcador_penales = self.marcador_sin_penales
+        if marcador_penales:
+            return marcador_penales
         if self.goles_local is None or self.goles_visitante is None:
             return '-'
         return f'{self.goles_local} - {self.goles_visitante}'
+
+    def info_penales(self):
+        scraper = (self.scraper_seguimiento or {}).get('scraper') or {}
+        summary = scraper.get('summary') or {}
+        periods = summary.get('periods') or []
+        penalty_period = next(
+            (
+                period
+                for period in periods
+                if 'penal' in (period.get('name') or '').lower()
+            ),
+            None,
+        )
+        if not penalty_period:
+            return None
+
+        def score_int(score, side):
+            value = (score or {}).get(side)
+            return int(value) if str(value).isdigit() else None
+
+        penales_local = score_int(penalty_period.get('score'), 'home')
+        penales_visitante = score_int(penalty_period.get('score'), 'away')
+        if penales_local is None or penales_visitante is None:
+            return None
+
+        goles_local = 0
+        goles_visitante = 0
+        tiene_marcador_partido = False
+        for period in periods:
+            name = (period.get('name') or '').lower()
+            if 'penal' in name:
+                continue
+            local = score_int(period.get('score'), 'home')
+            visitante = score_int(period.get('score'), 'away')
+            if local is None or visitante is None:
+                continue
+            goles_local += local
+            goles_visitante += visitante
+            tiene_marcador_partido = True
+
+        if not tiene_marcador_partido:
+            goles_local = self.goles_local
+            goles_visitante = self.goles_visitante
+        if goles_local is None or goles_visitante is None:
+            return None
+
+        ganador = ''
+        if penales_local > penales_visitante:
+            ganador = 'local'
+        elif penales_visitante > penales_local:
+            ganador = 'visitante'
+
+        return {
+            'goles_local': goles_local,
+            'goles_visitante': goles_visitante,
+            'penales_local': penales_local,
+            'penales_visitante': penales_visitante,
+            'ganador': ganador,
+        }
+
+    @property
+    def marcador_sin_penales(self):
+        info = self.info_penales()
+        if not info:
+            return ''
+        return f"{info['goles_local']} - {info['goles_visitante']}"
+
+    @property
+    def nota_penales(self):
+        info = self.info_penales()
+        if not info:
+            return ''
+        if info['ganador'] == 'local':
+            return f"{self.local_nombre} gano {info['penales_local']}-{info['penales_visitante']} por penales"
+        if info['ganador'] == 'visitante':
+            return f"{self.visitante_nombre} gano {info['penales_visitante']}-{info['penales_local']} por penales"
+        return ''
+
+    @property
+    def ganador_penales(self):
+        info = self.info_penales()
+        return info.get('ganador', '') if info else ''
 
     @property
     def estado_partido_label(self):

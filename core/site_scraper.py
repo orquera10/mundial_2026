@@ -356,6 +356,25 @@ def flashscore_team_name(value):
         'Uruguay': 'Uruguay',
         'Uzbekistán': 'Uzbekistan',
     }
+    aliases.update(
+        {
+            'Arabia Saud\u00ed': 'Saudi Arabia',
+            'B\u00e9lgica': 'Belgium',
+            'Canad\u00e1': 'Canada',
+            'Espa\u00f1a': 'Spain',
+            'Hait\u00ed': 'Haiti',
+            'Ir\u00e1n': 'IR Iran',
+            'Jap\u00f3n': 'Japan',
+            'M\u00e9xico': 'Mexico',
+            'Pa\u00edses Bajos': 'Netherlands',
+            'Panam\u00e1': 'Panama',
+            'Rep\u00fablica Checa': 'Czechia',
+            'Sud\u00e1frica': 'South Africa',
+            'T\u00fanez': 'Tunisia',
+            'Turqu\u00eda': 'Turkiye',
+            'Uzbekist\u00e1n': 'Uzbekistan',
+        }
+    )
     return aliases.get(value, value)
 
 
@@ -409,6 +428,10 @@ def flashscore_match_url(row):
     )
 
 
+def flashscore_competition_matches_title(value, competition_title='MUNDIAL: Campeonato del Mundo'):
+    return (value or '').startswith(competition_title)
+
+
 def extract_flashscore_competition_matches(rows, competition_title='MUNDIAL: Campeonato del Mundo'):
     matches = []
     in_competition = False
@@ -416,7 +439,7 @@ def extract_flashscore_competition_matches(rows, competition_title='MUNDIAL: Cam
 
     for row in rows:
         if row.get('ZA'):
-            in_competition = row.get('ZA') == competition_title
+            in_competition = flashscore_competition_matches_title(row.get('ZA'), competition_title)
             competition = row if in_competition else {}
             continue
 
@@ -429,6 +452,7 @@ def extract_flashscore_competition_matches(rows, competition_title='MUNDIAL: Cam
             {
                 'event_id': row.get('AA', ''),
                 'competition': competition.get('ZA', competition_title),
+                'round': row.get('ER', ''),
                 'home': home,
                 'away': away,
                 'timestamp': row.get('AD', ''),
@@ -453,14 +477,24 @@ def fetch_flashscore_worldcup_matches(feed_name=None, source_url=None, block_nam
     if source_url is None:
         source_url = getattr(settings, 'SCRAPER_BASE_URL', '')
     source_url = source_url.strip()
-    block_names = [block_name] if block_name else ['fixtures', 'summary-fixtures']
+    block_names = [block_name] if block_name else ['fixtures', 'summary-results', 'summary-fixtures']
 
     if source_url:
         url = build_scrape_url(source_url)
         status, html = fetch_html(url)
+        collected_matches = []
+        found_blocks = []
+        all_events_count = 0
+        season_id = 0
         for current_block in block_names:
             initial_feed = extract_flashscore_initial_feed(html, current_block)
-            if initial_feed['rows']:
+            matches = extract_flashscore_competition_matches(initial_feed['rows'])
+            if matches:
+                collected_matches.extend(matches)
+                found_blocks.append(current_block)
+                all_events_count += initial_feed['all_events_count']
+                season_id = season_id or initial_feed['season_id']
+            if block_name and initial_feed['rows']:
                 return {
                     'status': status,
                     'source': 'page',
@@ -468,8 +502,18 @@ def fetch_flashscore_worldcup_matches(feed_name=None, source_url=None, block_nam
                     'block': current_block,
                     'all_events_count': initial_feed['all_events_count'],
                     'season_id': initial_feed['season_id'],
-                    'matches': extract_flashscore_competition_matches(initial_feed['rows']),
+                    'matches': matches,
                 }
+        if collected_matches:
+            return {
+                'status': status,
+                'source': 'page',
+                'url': url,
+                'block': '+'.join(found_blocks),
+                'all_events_count': all_events_count,
+                'season_id': season_id,
+                'matches': collected_matches,
+            }
 
     feed_name = feed_name or getattr(settings, 'SCRAPER_FLASHSCORE_TODAY_FEED', 'f_1_0_2_es-ar_1')
     status, rows = fetch_flashscore_feed(feed_name, referer_url=source_url or 'https://www.flashscore.com.ar/')

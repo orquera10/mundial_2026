@@ -82,8 +82,80 @@ OFFICIAL_GROUP_KICKOFFS = {
     72: ('2026-06-27', time(19, 30)),
 }
 
+OFFICIAL_KNOCKOUT_DETAILS = {
+    73: {
+        'fecha': '2026-06-28',
+        'hora': time(16, 0),
+    },
+    74: {
+        'fecha': '2026-06-29',
+        'hora': time(17, 30),
+    },
+    75: {
+        'fecha': '2026-06-29',
+        'hora': time(21, 0),
+        'estadio': 'Atlanta Stadium',
+        'ciudad': 'Atlanta',
+    },
+    76: {
+        'fecha': '2026-06-29',
+        'hora': time(14, 0),
+    },
+    77: {
+        'fecha': '2026-06-30',
+        'hora': time(18, 0),
+    },
+    78: {
+        'fecha': '2026-06-30',
+        'hora': time(14, 0),
+    },
+    79: {
+        'fecha': '2026-06-30',
+        'hora': time(22, 0),
+    },
+    80: {
+        'fecha': '2026-07-01',
+        'hora': time(13, 0),
+    },
+    81: {
+        'fecha': '2026-07-01',
+        'hora': time(21, 0),
+    },
+    82: {
+        'fecha': '2026-07-01',
+        'hora': time(17, 0),
+    },
+    83: {
+        'fecha': '2026-07-02',
+        'hora': time(20, 0),
+    },
+    84: {
+        'fecha': '2026-07-02',
+        'hora': time(16, 0),
+    },
+    85: {
+        'fecha': '2026-07-03',
+        'hora': time(0, 0),
+    },
+    86: {
+        'fecha': '2026-07-03',
+        'hora': time(19, 0),
+    },
+    87: {
+        'fecha': '2026-07-03',
+        'hora': time(22, 30),
+    },
+    88: {
+        'fecha': '2026-07-03',
+        'hora': time(15, 0),
+    },
+}
+
 
 def match_time(numero):
+    knockout = OFFICIAL_KNOCKOUT_DETAILS.get(numero)
+    if knockout:
+        return knockout['hora']
     kickoff = OFFICIAL_GROUP_KICKOFFS.get(numero)
     if kickoff:
         return kickoff[1]
@@ -91,8 +163,19 @@ def match_time(numero):
 
 
 def match_date(numero, fallback):
+    knockout = OFFICIAL_KNOCKOUT_DETAILS.get(numero)
+    if knockout:
+        return knockout['fecha']
     kickoff = OFFICIAL_GROUP_KICKOFFS.get(numero)
     return kickoff[0] if kickoff else fallback
+
+
+def knockout_venue(numero):
+    details = OFFICIAL_KNOCKOUT_DETAILS.get(numero, {})
+    return {
+        'estadio': details.get('estadio', 'Sede a confirmar'),
+        'ciudad': details.get('ciudad', ''),
+    }
 
 
 def transmision_argentina(local, visitante, fase):
@@ -184,33 +267,33 @@ GROUP_MATCHES = [
 ]
 
 KNOCKOUT_ROUNDS = [
-    (73, Partido.FASE_16AVOS, '2026-06-28', '16avos 1', '16avos 2'),
-    (74, Partido.FASE_16AVOS, '2026-06-28', '16avos 3', '16avos 4'),
-    (75, Partido.FASE_16AVOS, '2026-06-28', '16avos 5', '16avos 6'),
-    (76, Partido.FASE_16AVOS, '2026-06-29', '16avos 7', '16avos 8'),
-    (77, Partido.FASE_16AVOS, '2026-06-29', '16avos 9', '16avos 10'),
-    (78, Partido.FASE_16AVOS, '2026-06-29', '16avos 11', '16avos 12'),
-    (79, Partido.FASE_16AVOS, '2026-06-30', '16avos 13', '16avos 14'),
-    (80, Partido.FASE_16AVOS, '2026-06-30', '16avos 15', '16avos 16'),
-    (81, Partido.FASE_16AVOS, '2026-06-30', '16avos 17', '16avos 18'),
-    (82, Partido.FASE_16AVOS, '2026-07-01', '16avos 19', '16avos 20'),
-    (83, Partido.FASE_16AVOS, '2026-07-01', '16avos 21', '16avos 22'),
-    (84, Partido.FASE_16AVOS, '2026-07-01', '16avos 23', '16avos 24'),
-    (85, Partido.FASE_16AVOS, '2026-07-02', '16avos 25', '16avos 26'),
-    (86, Partido.FASE_16AVOS, '2026-07-02', '16avos 27', '16avos 28'),
-    (87, Partido.FASE_16AVOS, '2026-07-03', '16avos 29', '16avos 30'),
-    (88, Partido.FASE_16AVOS, '2026-07-03', '16avos 31', '16avos 32'),
-    (89, Partido.FASE_16, '2026-07-04', 'Ganador 73', 'Ganador 74'),
-    (90, Partido.FASE_16, '2026-07-04', 'Ganador 75', 'Ganador 76'),
-    (91, Partido.FASE_16, '2026-07-05', 'Ganador 77', 'Ganador 78'),
+    (73, Partido.FASE_16AVOS, '2026-06-28', '2° Grupo A', '2° Grupo B'),
+    (74, Partido.FASE_16AVOS, '2026-06-28', '1° Grupo E', 'Mejor 3° ABCDF'),
+    (75, Partido.FASE_16AVOS, '2026-06-28', '1° Grupo F', '2° Grupo C'),
+    (76, Partido.FASE_16AVOS, '2026-06-29', '1° Grupo C', '2° Grupo F'),
+    (77, Partido.FASE_16AVOS, '2026-06-29', '1° Grupo I', 'Mejor 3° CDFGH'),
+    (78, Partido.FASE_16AVOS, '2026-06-29', '2° Grupo E', '2° Grupo I'),
+    (79, Partido.FASE_16AVOS, '2026-06-30', '1° Grupo A', 'Mejor 3° CEFHI'),
+    (80, Partido.FASE_16AVOS, '2026-06-30', '1° Grupo L', 'Mejor 3° EHIJK'),
+    (81, Partido.FASE_16AVOS, '2026-06-30', '1° Grupo D', 'Mejor 3° BEFIJ'),
+    (82, Partido.FASE_16AVOS, '2026-07-01', '1° Grupo G', 'Mejor 3° AEHIJ'),
+    (83, Partido.FASE_16AVOS, '2026-07-01', '2° Grupo K', '2° Grupo L'),
+    (84, Partido.FASE_16AVOS, '2026-07-01', '1° Grupo H', '2° Grupo J'),
+    (85, Partido.FASE_16AVOS, '2026-07-02', '1° Grupo B', 'Mejor 3° EFGIJ'),
+    (86, Partido.FASE_16AVOS, '2026-07-02', '1° Grupo J', '2° Grupo H'),
+    (87, Partido.FASE_16AVOS, '2026-07-03', '1° Grupo K', 'Mejor 3° DEIJL'),
+    (88, Partido.FASE_16AVOS, '2026-07-03', '2° Grupo D', '2° Grupo G'),
+    (89, Partido.FASE_16, '2026-07-04', 'Ganador 74', 'Ganador 77'),
+    (90, Partido.FASE_16, '2026-07-04', 'Ganador 73', 'Ganador 75'),
+    (91, Partido.FASE_16, '2026-07-05', 'Ganador 76', 'Ganador 78'),
     (92, Partido.FASE_16, '2026-07-05', 'Ganador 79', 'Ganador 80'),
-    (93, Partido.FASE_16, '2026-07-06', 'Ganador 81', 'Ganador 82'),
-    (94, Partido.FASE_16, '2026-07-06', 'Ganador 83', 'Ganador 84'),
-    (95, Partido.FASE_16, '2026-07-07', 'Ganador 85', 'Ganador 86'),
-    (96, Partido.FASE_16, '2026-07-07', 'Ganador 87', 'Ganador 88'),
+    (93, Partido.FASE_16, '2026-07-06', 'Ganador 83', 'Ganador 84'),
+    (94, Partido.FASE_16, '2026-07-06', 'Ganador 81', 'Ganador 82'),
+    (95, Partido.FASE_16, '2026-07-07', 'Ganador 86', 'Ganador 88'),
+    (96, Partido.FASE_16, '2026-07-07', 'Ganador 85', 'Ganador 87'),
     (97, Partido.FASE_CUARTOS, '2026-07-09', 'Ganador 89', 'Ganador 90'),
-    (98, Partido.FASE_CUARTOS, '2026-07-10', 'Ganador 91', 'Ganador 92'),
-    (99, Partido.FASE_CUARTOS, '2026-07-11', 'Ganador 93', 'Ganador 94'),
+    (98, Partido.FASE_CUARTOS, '2026-07-10', 'Ganador 93', 'Ganador 94'),
+    (99, Partido.FASE_CUARTOS, '2026-07-11', 'Ganador 91', 'Ganador 92'),
     (100, Partido.FASE_CUARTOS, '2026-07-11', 'Ganador 95', 'Ganador 96'),
     (101, Partido.FASE_SEMIS, '2026-07-14', 'Ganador 97', 'Ganador 98'),
     (102, Partido.FASE_SEMIS, '2026-07-15', 'Ganador 99', 'Ganador 100'),
@@ -283,6 +366,8 @@ class Command(BaseCommand):
             creados += int(created)
 
         for index, (numero, fase, fecha, local, visitante) in enumerate(KNOCKOUT_ROUNDS, start=1):
+            fecha = match_date(numero, fecha)
+            venue = knockout_venue(numero)
             partido, created = Partido.objects.get_or_create(
                 numero=numero,
                 defaults={
@@ -290,10 +375,7 @@ class Command(BaseCommand):
                     'grupo': '',
                     'fecha': date.fromisoformat(fecha),
                     'hora': match_time(numero),
-                    'estadio': 'Sede a confirmar',
-                    'ciudad': '',
-                    'equipo_local': None,
-                    'equipo_visitante': None,
+                    **venue,
                     'etiqueta_local': local,
                     'etiqueta_visitante': visitante,
                     'notas': 'Actualizar cuando se definan los cruces.',
@@ -304,8 +386,9 @@ class Command(BaseCommand):
                 for campo, valor in {
                     'fase': fase,
                     'grupo': '',
-                    'estadio': 'Sede a confirmar',
-                    'ciudad': '',
+                    'fecha': date.fromisoformat(fecha),
+                    'hora': match_time(numero),
+                    **venue,
                     'equipo_local': None,
                     'equipo_visitante': None,
                     'etiqueta_local': local,
@@ -318,6 +401,8 @@ class Command(BaseCommand):
                     update_fields=[
                         'fase',
                         'grupo',
+                        'fecha',
+                        'hora',
                         'estadio',
                         'ciudad',
                         'equipo_local',

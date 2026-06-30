@@ -1,5 +1,5 @@
 from django.contrib import messages
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import RegistroUsuarioForm
+from .knockout_rules import ANNEX_C_COLUMN_TO_MATCH, ROUND_OF_32_MATCHUPS, terceros_por_partido
 from .models import Equipo, EquipoFavorito, Partido, PartidoFavorito, Prediccion, bandera_url
 from .site_scraper import (
     build_flashscore_lineups_report,
@@ -80,6 +81,8 @@ CONFEDERACIONES = {
 PLANTELES_CONFIRMADOS = {}
 TECNICOS_CONFIRMADOS = {}
 
+LIVE_MATCH_WINDOW = timedelta(hours=2, minutes=30)
+
 
 
 def url_volver(request, fallback):
@@ -108,7 +111,7 @@ def agrupar_partidos(partidos):
                     if equipo and equipo.id not in vistos:
                         vistos.add(equipo.id)
                         equipos.append(equipo)
-            secciones.append({'titulo': f'Grupo {grupo}', 'partidos': items, 'equipos': equipos})
+            secciones.append({'titulo': f'Grupo {grupo}', 'partidos': items, 'equipos': equipos, 'grupo': grupo})
 
     fases = dict(Partido.FASES)
     for fase, nombre in Partido.FASES:
@@ -137,6 +140,26 @@ def secciones_prediccion_grupos(predicciones_por_partido):
                 'equipos': equipos,
                 'partidos': partidos,
                 'tabla': tabla_desde_predicciones(equipos, partidos),
+            }
+        )
+    return secciones
+
+
+def secciones_resultados_grupos(resultados_en_vivo=None):
+    secciones = []
+    for grupo in list('ABCDEFGHIJKL'):
+        equipos = list(Equipo.objects.filter(grupo=grupo).order_by('nombre'))
+        partidos = list(
+            Partido.objects.filter(fase=Partido.FASE_GRUPOS, grupo=grupo)
+            .select_related('equipo_local', 'equipo_visitante')
+            .order_by('fecha', 'hora', 'numero')
+        )
+        secciones.append(
+            {
+                'grupo': grupo,
+                'equipos': equipos,
+                'partidos': partidos,
+                'tabla': tabla_desde_resultados(equipos, partidos, resultados_en_vivo=resultados_en_vivo),
             }
         )
     return secciones
@@ -178,7 +201,7 @@ def aplicar_marcador_scraper(partido, match):
     payload = scraper_score_payload(match)
     if not payload:
         return partido
-    partido.scraper_marcador = payload['marcador']
+    partido.scraper_marcador = partido.marcador if partido.info_penales() else payload['marcador']
     partido.scraper_estado = payload['estado'] or partido.estado
     partido.scraper_estado_display = payload['estado_display'] or partido.estado_partido_label
     return partido
@@ -192,6 +215,51 @@ def aplicar_marcadores_scraper(partidos, scraped_by_id):
     return partidos
 
 
+def partido_en_ventana_en_vivo(partido, now=None):
+    if partido.estado == Partido.ESTADO_FINALIZADO:
+        return False
+    if partido.fase != Partido.FASE_GRUPOS and (not partido.ciudad or partido.estadio == 'Sede a confirmar'):
+        return False
+    inicio = partido.inicio_argentina
+    if not inicio:
+        return False
+    now = (now or timezone.now()).astimezone(inicio.tzinfo)
+    return inicio <= now <= inicio + LIVE_MATCH_WINDOW
+
+
+def aplicar_estado_por_horario(partidos, now=None):
+    for partido in partidos:
+        if getattr(partido, 'scraper_estado', ''):
+            continue
+        if partido.estado == Partido.ESTADO_PROGRAMADO and partido_en_ventana_en_vivo(partido, now=now):
+            partido.scraper_estado = Partido.ESTADO_EN_VIVO
+            partido.scraper_estado_display = 'En vivo'
+            partido.scraper_marcador = partido.marcador
+    return partidos
+
+
+def ordenar_partidos_por_argentina(partidos):
+    return sorted(
+        list(partidos),
+        key=lambda partido: (
+            partido.inicio_argentina or timezone.make_aware(datetime.combine(partido.fecha, partido.hora or time.min)),
+            partido.numero,
+        ),
+    )
+
+
+def calendario_por_fecha_argentina(partidos):
+    calendario_dias = []
+    fechas_vistas = set()
+    for partido in ordenar_partidos_por_argentina(partidos):
+        fecha = partido.fecha_argentina
+        if fecha not in fechas_vistas:
+            fechas_vistas.add(fecha)
+            calendario_dias.append({'fecha': fecha, 'partidos': []})
+        calendario_dias[-1]['partidos'].append(partido)
+    return calendario_dias
+
+
 def persistir_marcador_scraper(partido, match):
     payload = scraper_score_payload(match)
     if not payload:
@@ -203,9 +271,13 @@ def persistir_marcador_scraper(partido, match):
         partido.estado = estado
         update_fields.append('estado')
 
+    info_penales = partido.info_penales()
+    goles_local = info_penales['goles_local'] if info_penales else payload['goles_local']
+    goles_visitante = info_penales['goles_visitante'] if info_penales else payload['goles_visitante']
+
     for field, value in (
-        ('goles_local', payload['goles_local']),
-        ('goles_visitante', payload['goles_visitante']),
+        ('goles_local', goles_local),
+        ('goles_visitante', goles_visitante),
     ):
         if value is not None and getattr(partido, field) != value:
             setattr(partido, field, value)
@@ -250,7 +322,7 @@ def resultados_snapshot_por_partido(partidos):
         scraper = cached.get('scraper') or {}
         if not cached.get('complete') or not scraper_tracking_complete(scraper):
             continue
-        marcador = cached.get('marcador') or ''
+        marcador = partido.marcador
         partes = [parte.strip() for parte in marcador.split('-', 1)]
         if len(partes) != 2 or not partes[0].isdigit() or not partes[1].isdigit():
             continue
@@ -288,7 +360,8 @@ def cached_tracking_response(partido, data):
             'updated_at': cached.get('updated_at') or data['updated_at'],
             'estado': cached.get('estado', data['estado']),
             'estado_display': cached.get('estado_display', data['estado_display']),
-            'marcador': cached.get('marcador', data['marcador']),
+            'marcador': partido.marcador,
+            'nota_penales': partido.nota_penales,
             'scraper': scraper,
         }
     )
@@ -299,12 +372,17 @@ def cached_tracking_response(partido, data):
 def aplicar_marcador_snapshot(partido):
     cached = partido.scraper_seguimiento or {}
     scraper = cached.get('scraper') or {}
-    if not cached.get('complete') or not scraper_tracking_complete(scraper):
-        return False
-    partido.scraper_marcador = cached.get('marcador') or '-'
-    partido.scraper_estado = cached.get('estado') or partido.estado
-    partido.scraper_estado_display = cached.get('estado_display') or partido.estado_partido_label
-    return True
+    if cached.get('complete') and scraper_tracking_complete(scraper):
+        partido.scraper_marcador = partido.marcador
+        partido.scraper_estado = cached.get('estado') or partido.estado
+        partido.scraper_estado_display = cached.get('estado_display') or partido.estado_partido_label
+        return True
+    if partido.goles_local is not None and partido.goles_visitante is not None:
+        partido.scraper_marcador = partido.marcador
+        partido.scraper_estado = partido.estado
+        partido.scraper_estado_display = partido.estado_partido_label
+        return True
+    return False
 
 
 def save_tracking_snapshot_if_complete(partido, data):
@@ -322,7 +400,18 @@ def save_tracking_snapshot_if_complete(partido, data):
         'scraper': scraper,
     }
     partido.scraper_seguimiento_actualizado = timezone.now()
-    partido.save(update_fields=['scraper_seguimiento', 'scraper_seguimiento_actualizado'])
+    update_fields = ['scraper_seguimiento', 'scraper_seguimiento_actualizado']
+    info_penales = partido.info_penales()
+    if info_penales:
+        if partido.goles_local != info_penales['goles_local']:
+            partido.goles_local = info_penales['goles_local']
+            update_fields.append('goles_local')
+        if partido.goles_visitante != info_penales['goles_visitante']:
+            partido.goles_visitante = info_penales['goles_visitante']
+            update_fields.append('goles_visitante')
+        partido.scraper_seguimiento['marcador'] = f"{info_penales['goles_local']} - {info_penales['goles_visitante']}"
+        partido.scraper_seguimiento['nota_penales'] = partido.nota_penales
+    partido.save(update_fields=sorted(set(update_fields)))
     return True
 
 
@@ -507,25 +596,24 @@ def slot_o_placeholder(diccionario, clave, etiqueta):
     return diccionario.get(clave) or placeholder_slot(etiqueta)
 
 
-def completar_fase_final(fases_finales, secciones):
+def completar_fase_final(fases_finales, secciones, usar_predicciones=True):
     primeros, segundos, mejores_terceros = construir_slots_clasificados(secciones)
+    terceros_por_grupo = {tercero['grupo']: tercero for tercero in mejores_terceros.values()}
+    terceros_por_match = terceros_por_partido(terceros_por_grupo)
+
+    def resolver_slot_16avos(spec):
+        tipo, clave, etiqueta = spec
+        if tipo == 'primeros':
+            return slot_o_placeholder(primeros, clave, etiqueta)
+        if tipo == 'segundos':
+            return slot_o_placeholder(segundos, clave, etiqueta)
+        if tipo == 'terceros':
+            return terceros_por_match.get(ANNEX_C_COLUMN_TO_MATCH[clave]) or placeholder_slot(etiqueta)
+        return placeholder_slot(etiqueta)
+
     cruces_16avos = {
-        73: (slot_o_placeholder(primeros, 'A', '1° Grupo A'), slot_o_placeholder(mejores_terceros, 8, 'Mejor 3° 8')),
-        74: (slot_o_placeholder(primeros, 'B', '1° Grupo B'), slot_o_placeholder(mejores_terceros, 7, 'Mejor 3° 7')),
-        75: (slot_o_placeholder(primeros, 'C', '1° Grupo C'), slot_o_placeholder(mejores_terceros, 6, 'Mejor 3° 6')),
-        76: (slot_o_placeholder(primeros, 'D', '1° Grupo D'), slot_o_placeholder(mejores_terceros, 5, 'Mejor 3° 5')),
-        77: (slot_o_placeholder(primeros, 'E', '1° Grupo E'), slot_o_placeholder(mejores_terceros, 4, 'Mejor 3° 4')),
-        78: (slot_o_placeholder(primeros, 'F', '1° Grupo F'), slot_o_placeholder(mejores_terceros, 3, 'Mejor 3° 3')),
-        79: (slot_o_placeholder(primeros, 'G', '1° Grupo G'), slot_o_placeholder(mejores_terceros, 2, 'Mejor 3° 2')),
-        80: (slot_o_placeholder(primeros, 'H', '1° Grupo H'), slot_o_placeholder(mejores_terceros, 1, 'Mejor 3° 1')),
-        81: (slot_o_placeholder(primeros, 'I', '1° Grupo I'), slot_o_placeholder(segundos, 'L', '2° Grupo L')),
-        82: (slot_o_placeholder(primeros, 'J', '1° Grupo J'), slot_o_placeholder(segundos, 'K', '2° Grupo K')),
-        83: (slot_o_placeholder(primeros, 'K', '1° Grupo K'), slot_o_placeholder(segundos, 'J', '2° Grupo J')),
-        84: (slot_o_placeholder(primeros, 'L', '1° Grupo L'), slot_o_placeholder(segundos, 'I', '2° Grupo I')),
-        85: (slot_o_placeholder(segundos, 'A', '2° Grupo A'), slot_o_placeholder(segundos, 'B', '2° Grupo B')),
-        86: (slot_o_placeholder(segundos, 'C', '2° Grupo C'), slot_o_placeholder(segundos, 'D', '2° Grupo D')),
-        87: (slot_o_placeholder(segundos, 'E', '2° Grupo E'), slot_o_placeholder(segundos, 'F', '2° Grupo F')),
-        88: (slot_o_placeholder(segundos, 'G', '2° Grupo G'), slot_o_placeholder(segundos, 'H', '2° Grupo H')),
+        numero: (resolver_slot_16avos(local), resolver_slot_16avos(visitante))
+        for numero, (local, visitante) in ROUND_OF_32_MATCHUPS.items()
     }
 
     partidos_por_numero = {}
@@ -535,12 +623,24 @@ def completar_fase_final(fases_finales, secciones):
         for partido in fase['partidos']:
             partidos_por_numero[partido.numero] = partido
             if partido.numero in cruces_16avos:
-                local_slot, visitante_slot = cruces_16avos[partido.numero]
+                local_slot = (
+                    equipo_slot(partido.equipo_local)
+                    if partido.equipo_local_id
+                    else cruces_16avos[partido.numero][0]
+                )
+                visitante_slot = (
+                    equipo_slot(partido.equipo_visitante)
+                    if partido.equipo_visitante_id
+                    else cruces_16avos[partido.numero][1]
+                )
             else:
                 local_slot = resolver_slot_eliminatorio(partido.etiqueta_local, resultado_slots)
                 visitante_slot = resolver_slot_eliminatorio(partido.etiqueta_visitante, resultado_slots)
             aplicar_display_partido(partido, local_slot, visitante_slot)
-            resultado_slots[partido.numero] = resultado_desde_prediccion(partido)
+            if usar_predicciones:
+                resultado_slots[partido.numero] = resultado_desde_prediccion(partido)
+            else:
+                resultado_slots[partido.numero] = resultado_desde_resultado_final(partido)
 
     return fases_finales
 
@@ -564,18 +664,6 @@ def marcar_fase_final_como_proyeccion(fases_finales):
             partido.proyeccion_visitante_bandera_url = getattr(partido, 'display_visitante_bandera_url', '')
             partido.proyeccion_local_placeholder = local_placeholder
             partido.proyeccion_visitante_placeholder = visitante_placeholder
-            for atributo in (
-                'display_local_nombre',
-                'display_visitante_nombre',
-                'display_local_bandera',
-                'display_visitante_bandera',
-                'display_local_bandera_url',
-                'display_visitante_bandera_url',
-                'display_local_placeholder',
-                'display_visitante_placeholder',
-            ):
-                if hasattr(partido, atributo):
-                    delattr(partido, atributo)
     return fases_finales
 
 
@@ -609,6 +697,42 @@ def resultado_desde_prediccion(partido):
     if prediccion.goles_local > prediccion.goles_visitante:
         return {'ganador': local, 'perdedor': visitante}
     return {'ganador': visitante, 'perdedor': local}
+
+
+def resultado_desde_resultado_final(partido):
+    prediccion_original = getattr(partido, 'prediccion_usuario', None)
+    partido.prediccion_usuario = None
+    try:
+        if (
+            partido.estado != Partido.ESTADO_FINALIZADO
+            or partido.goles_local is None
+            or partido.goles_visitante is None
+        ):
+            return {
+                'ganador': placeholder_slot(f'Ganador {partido.numero}'),
+                'perdedor': placeholder_slot(f'Perdedor {partido.numero}'),
+            }
+        if partido.goles_local == partido.goles_visitante:
+            ganador_penales = partido.ganador_penales
+            if ganador_penales == 'local':
+                return {'ganador': equipo_slot(partido.equipo_local), 'perdedor': equipo_slot(partido.equipo_visitante)}
+            if ganador_penales == 'visitante':
+                return {'ganador': equipo_slot(partido.equipo_visitante), 'perdedor': equipo_slot(partido.equipo_local)}
+            return {
+                'ganador': placeholder_slot(f'Ganador {partido.numero}'),
+                'perdedor': placeholder_slot(f'Perdedor {partido.numero}'),
+            }
+        partido.prediccion_usuario = type(
+            'ResultadoFinal',
+            (),
+            {
+                'goles_local': partido.goles_local,
+                'goles_visitante': partido.goles_visitante,
+            },
+        )()
+        return resultado_desde_prediccion(partido)
+    finally:
+        partido.prediccion_usuario = prediccion_original
 
 
 def home(request):
@@ -670,13 +794,24 @@ def home(request):
     }
     aplicar_marcadores_scraper(partidos, scraped_by_id)
     partidos_en_vivo = list(
-        Partido.objects.filter(estado=Partido.ESTADO_EN_VIVO)
+        Partido.objects.filter(Q(estado=Partido.ESTADO_EN_VIVO) | Q(estado=Partido.ESTADO_PROGRAMADO))
         .select_related('equipo_local', 'equipo_visitante')
         .order_by('fecha', 'hora', 'numero')
     )
+    aplicar_marcadores_snapshot(partidos_en_vivo)
+    aplicar_marcadores_scraper(partidos_en_vivo, scraped_by_id)
+    aplicar_estado_por_horario(partidos_en_vivo)
+    partidos_en_vivo = [
+        partido
+        for partido in partidos_en_vivo
+        if partido.estado == Partido.ESTADO_EN_VIVO
+        or getattr(partido, 'scraper_estado', '') == Partido.ESTADO_EN_VIVO
+    ]
     cupo_proximos = max(4 - len(partidos_en_vivo), 0)
+    partidos_en_vivo_ids = {partido.id for partido in partidos_en_vivo}
     partidos_programados = list(
         Partido.objects.filter(estado=Partido.ESTADO_PROGRAMADO)
+        .exclude(id__in=partidos_en_vivo_ids)
         .select_related('equipo_local', 'equipo_visitante')
         .order_by('fecha', 'hora', 'numero')[:cupo_proximos]
     )
@@ -694,6 +829,9 @@ def home(request):
     aplicar_marcadores_scraper(proximos, scraped_by_id)
     aplicar_marcadores_scraper(anteriores, scraped_by_id)
     aplicar_marcadores_scraper(favoritos_partidos, scraped_by_id)
+    aplicar_estado_por_horario(partidos)
+    aplicar_estado_por_horario(proximos)
+    aplicar_estado_por_horario(favoritos_partidos)
     resumen = Partido.objects.aggregate(
         total=Count('id'),
         programados=Count('id', filter=Q(estado=Partido.ESTADO_PROGRAMADO)),
@@ -702,30 +840,28 @@ def home(request):
     )
 
     secciones_partidos = agrupar_partidos(partidos)
-    for seccion in secciones_partidos:
-        if seccion.get('equipos'):
-            seccion['tabla'] = tabla_desde_resultados(
-                seccion['equipos'],
-                seccion['partidos'],
-                resultados_en_vivo=resultados_scraper,
-            )
-    if request.user.is_authenticated:
-        fases_proyectadas = [seccion for seccion in secciones_partidos if not seccion.get('equipos')]
-        completar_fase_final(fases_proyectadas, secciones_prediccion_grupos(predicciones_por_partido))
-        marcar_fase_final_como_proyeccion(fases_proyectadas)
+    secciones_grupos = [seccion for seccion in secciones_partidos if seccion.get('equipos')]
+    secciones_etapa_final = [seccion for seccion in secciones_partidos if not seccion.get('equipos')]
+    for seccion in secciones_grupos:
+        seccion['tabla'] = tabla_desde_resultados(
+            seccion['equipos'],
+            seccion['partidos'],
+            resultados_en_vivo=resultados_scraper,
+        )
 
-    partidos_calendario = Partido.objects.select_related('equipo_local', 'equipo_visitante').order_by('fecha')
-    calendario_dias = []
-    fechas_vistas = set()
-    for partido in partidos_calendario:
-        if partido.fecha not in fechas_vistas:
-            fechas_vistas.add(partido.fecha)
-            calendario_dias.append({'fecha': partido.fecha, 'partidos': []})
-        calendario_dias[-1]['partidos'].append(partido)
+    if request.user.is_authenticated:
+        completar_fase_final(secciones_etapa_final, secciones_prediccion_grupos(predicciones_por_partido))
+        marcar_fase_final_como_proyeccion(secciones_etapa_final)
+    completar_fase_final(secciones_etapa_final, secciones_grupos, usar_predicciones=False)
+
+    partidos_calendario = Partido.objects.select_related('equipo_local', 'equipo_visitante').order_by('fecha', 'hora', 'numero')
+    calendario_dias = calendario_por_fecha_argentina(partidos_calendario)
 
     contexto = {
         'partidos': partidos,
         'secciones_partidos': secciones_partidos,
+        'secciones_grupos': secciones_grupos,
+        'secciones_etapa_final': secciones_etapa_final,
         'proximos': proximos,
         'anteriores': anteriores,
         'favoritos_partidos': favoritos_partidos,
@@ -1192,8 +1328,9 @@ def tabla_grupo_payload(grupo, resultados_en_vivo=None):
 
 def scraper_partidos_del_dia():
     hoy = timezone.localdate()
+    fechas = [hoy, hoy + timedelta(days=1), hoy - timedelta(days=1)]
     partidos = list(
-        Partido.objects.filter(fase=Partido.FASE_GRUPOS, fecha__in=[hoy, hoy + timedelta(days=1), hoy - timedelta(days=1)])
+        Partido.objects.filter(fecha__in=fechas)
         .select_related('equipo_local', 'equipo_visitante')
         .order_by('fecha', 'hora', 'numero')
     )
@@ -1201,6 +1338,25 @@ def scraper_partidos_del_dia():
         return []
 
     resultados = []
+    try:
+        report = fetch_flashscore_worldcup_matches()
+    except Exception:
+        report = {}
+    for partido in partidos:
+        match = flashscore_match_for_partido_in_matches(partido, report.get('matches', []))
+        if not match:
+            continue
+        score = match.get('score') or {}
+        if match.get('status') == 'programado' and score.get('home') == '' and score.get('away') == '':
+            continue
+        resultados.append(
+            {
+                'id': partido.id,
+                'partido': partido,
+                'match': match,
+            }
+        )
+
     for offset in (0, 1, -1):
         try:
             report = fetch_flashscore_worldcup_matches(
@@ -1266,9 +1422,36 @@ def api_partidos_vivo(request):
                 'equipo_visitante_id': partido.equipo_visitante_id,
                 'goles_local': goles_local,
                 'goles_visitante': goles_visitante,
-                'marcador': marcador,
+                'marcador': partido.marcador if partido.info_penales() else marcador,
+                'nota_penales': partido.nota_penales,
                 'estado': estado,
                 'estado_display': estado_display,
+                'evento_actualizado': partido.evento_actualizado.isoformat() if partido.evento_actualizado else '',
+            }
+        )
+
+    data_ids = {item['id'] for item in data}
+    partidos_por_horario = (
+        Partido.objects.filter(estado=Partido.ESTADO_PROGRAMADO, fecha__in=[timezone.localdate(), timezone.localdate() - timedelta(days=1), timezone.localdate() + timedelta(days=1)])
+        .exclude(id__in=data_ids)
+        .select_related('equipo_local', 'equipo_visitante')
+        .order_by('fecha', 'hora', 'numero')
+    )
+    for partido in partidos_por_horario:
+        if not partido_en_ventana_en_vivo(partido):
+            continue
+        data.append(
+            {
+                'id': partido.id,
+                'grupo': partido.grupo,
+                'equipo_local_id': partido.equipo_local_id,
+                'equipo_visitante_id': partido.equipo_visitante_id,
+                'goles_local': partido.goles_local,
+                'goles_visitante': partido.goles_visitante,
+                'marcador': partido.marcador,
+                'nota_penales': partido.nota_penales,
+                'estado': Partido.ESTADO_EN_VIVO,
+                'estado_display': 'En vivo',
                 'evento_actualizado': partido.evento_actualizado.isoformat() if partido.evento_actualizado else '',
             }
         )
@@ -1300,11 +1483,7 @@ def api_partidos_vivo(request):
     return JsonResponse(response)
 
 
-def api_partido_seguimiento(request, partido_id):
-    partido = get_object_or_404(
-        Partido.objects.select_related('equipo_local', 'equipo_visitante'),
-        id=partido_id,
-    )
+def scraper_tracking_data(partido, scraped_match=None, persist_snapshot=True):
     data = {
         'ok': True,
         'partido_id': partido.id,
@@ -1315,6 +1494,7 @@ def api_partido_seguimiento(request, partido_id):
         'estado': partido.estado,
         'estado_display': partido.estado_partido_label,
         'marcador': '-',
+        'nota_penales': partido.nota_penales,
         'scraper': {
             'available': True,
             'found': False,
@@ -1335,32 +1515,33 @@ def api_partido_seguimiento(request, partido_id):
         },
     }
 
-    cached_data = cached_tracking_response(partido, data)
-    if cached_data:
-        return JsonResponse(cached_data)
+    if scraped_match is None:
+        cached_data = cached_tracking_response(partido, data)
+        if cached_data:
+            return cached_data
 
-    try:
-        scraped_match = find_flashscore_match_for_partido(partido)
-    except Exception:
-        data['scraper'].update(
-            {
-                'available': False,
-                'status': 'sin_conexion',
-                'message': (
-                    'No se pudo conectar con Flashscore desde el servidor. '
-                    'No se actualiza el marcador hasta recuperar el scraper.'
-                ),
-            }
-        )
-        return JsonResponse(data)
-
+        try:
+            scraped_match = find_flashscore_match_for_partido(partido)
+        except Exception:
+            data['scraper'].update(
+                {
+                    'available': False,
+                    'status': 'sin_conexion',
+                    'message': (
+                        'No se pudo conectar con Flashscore desde el servidor. '
+                        'No se actualiza el marcador hasta recuperar el scraper.'
+                    ),
+                }
+            )
+            return data
     if not scraped_match:
-        return JsonResponse(data)
+        return data
 
     score = scraped_match.get('score') or {}
     score_payload = scraper_score_payload(scraped_match)
     if score_payload:
-        data['marcador'] = score_payload['marcador']
+        data['marcador'] = partido.marcador if partido.info_penales() else score_payload['marcador']
+        data['nota_penales'] = partido.nota_penales
         data['estado'] = score_payload['estado'] or data['estado']
         data['estado_display'] = score_payload['estado_display'] or data['estado_display']
         if partido.grupo and score_payload['goles_local'] is not None and score_payload['goles_visitante'] is not None:
@@ -1444,7 +1625,17 @@ def api_partido_seguimiento(request, partido_id):
                 team.get('starters') for team in summarized.values()
             )
 
-    save_tracking_snapshot_if_complete(partido, data)
+    if persist_snapshot:
+        save_tracking_snapshot_if_complete(partido, data)
+    return data
+
+
+def api_partido_seguimiento(request, partido_id):
+    partido = get_object_or_404(
+        Partido.objects.select_related('equipo_local', 'equipo_visitante'),
+        id=partido_id,
+    )
+    data = scraper_tracking_data(partido)
     return JsonResponse(data)
 
 def registro(request):
@@ -1504,14 +1695,12 @@ def almanaque(request):
         ]
         completar_fase_final(fases_proyectadas, secciones_prediccion_grupos(predicciones_por_partido))
         marcar_fase_final_como_proyeccion(fases_proyectadas)
+        secciones_reales = [
+            {'partidos': [partido for partido in partidos if partido.fase != Partido.FASE_GRUPOS]}
+        ]
+        completar_fase_final(secciones_reales, secciones_resultados_grupos(), usar_predicciones=False)
 
-    calendario_dias = []
-    fechas_vistas = set()
-    for partido in partidos:
-        if partido.fecha not in fechas_vistas:
-            fechas_vistas.add(partido.fecha)
-            calendario_dias.append({'fecha': partido.fecha, 'partidos': []})
-        calendario_dias[-1]['partidos'].append(partido)
+    calendario_dias = calendario_por_fecha_argentina(partidos)
 
     contexto = {
         'calendario_dias': calendario_dias,

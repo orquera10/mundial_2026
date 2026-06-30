@@ -33,6 +33,9 @@
 
             <div class="score-wrap">
                 <div class="score">{{ card_marcador }}</div>
+                {% if partido.nota_penales %}
+                    <div class="score-note">{{ partido.nota_penales }}</div>
+                {% endif %}
             </div>
 
             <div class="compact-team">

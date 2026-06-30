@@ -1480,7 +1480,7 @@
     </div>
 </div>
 
-{% for seccion in secciones_partidos %}
+{% for seccion in secciones_grupos %}
     <details class="group-block" {% if filtros.grupo or filtros.fase or filtros.q or filtros.estado or filtros.favoritos %}open{% endif %}>
         <summary class="group-heading">
             <span>{{ seccion.titulo }}</span>
@@ -1551,6 +1551,29 @@
     </details>
 {% empty %}
     <div class="empty">No hay partidos que coincidan con estos filtros.</div>
+{% endfor %}
+
+<div class="section-title">
+    <div>
+        <h2><span class="label-with-icon"><span class="icon" aria-hidden="true"><i class="bi bi-trophy"></i></span>Etapa final</span></h2>
+        <p>Partidos desde 16avos de final en adelante.</p>
+    </div>
+</div>
+
+{% for seccion in secciones_etapa_final %}
+    <details class="group-block" {% if filtros.grupo or filtros.fase or filtros.q or filtros.estado or filtros.favoritos %}open{% endif %}>
+        <summary class="group-heading">
+            <span>{{ seccion.titulo }}</span>
+            <span class="group-count">{{ seccion.partidos|length }} partidos</span>
+        </summary>
+        <div class="match-list">
+            {% for partido in seccion.partidos %}
+                {% include 'core/partials/partido_card.html' with partido=partido %}
+            {% endfor %}
+        </div>
+    </details>
+{% empty %}
+    <div class="empty">No hay partidos de etapa final que coincidan con estos filtros.</div>
 {% endfor %}
 
 <script>
@@ -1627,6 +1650,20 @@
                     const badge = card.querySelector('.badge');
                     if (score) {
                         score.textContent = partido.marcador;
+                    }
+                    const scoreWrap = card.querySelector('.score-wrap');
+                    let scoreNote = card.querySelector('.score-note');
+                    if (partido.nota_penales) {
+                        if (!scoreNote && scoreWrap) {
+                            scoreNote = document.createElement('div');
+                            scoreNote.className = 'score-note';
+                            scoreWrap.appendChild(scoreNote);
+                        }
+                        if (scoreNote) {
+                            scoreNote.textContent = partido.nota_penales;
+                        }
+                    } else if (scoreNote) {
+                        scoreNote.remove();
                     }
                     if (badge) {
                         badge.textContent = partido.estado_display;

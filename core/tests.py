@@ -34,6 +34,18 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'Ir al detalle del partido')
         self.assertContains(response, 'Mas detalles')
 
+    def test_home_muestra_seccion_etapa_final(self):
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Etapa final')
+
+    def test_home_muestra_proyeccion_de_etapa_final_sin_login(self):
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '1°')
+
     def test_tarjetas_usan_colores_de_las_selecciones(self):
         partido = Partido.objects.get(numero=1)
 
@@ -311,6 +323,73 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, '2 - 2')
         self.assertContains(response, 'match-card en_vivo')
 
+    def test_almanaque_tarjetas_usan_resultado_guardado_sin_snapshot_completo(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.get(numero=35)
+        partido.estado = Partido.ESTADO_FINALIZADO
+        partido.goles_local = 5
+        partido.goles_visitante = 1
+        partido.scraper_seguimiento = {}
+        partido.save(update_fields=['estado', 'goles_local', 'goles_visitante', 'scraper_seguimiento'])
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[]):
+            response = self.client.get('/almanaque/', {'q': 'Netherlands'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '5 - 1')
+        self.assertContains(response, 'match-card finalizado')
+
+    def test_partido_definido_por_penales_muestra_empate_y_nota(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.get(numero=74)
+        partido.equipo_local = Equipo.objects.get(nombre='Germany')
+        partido.equipo_visitante = Equipo.objects.get(nombre='Paraguay')
+        partido.estado = Partido.ESTADO_FINALIZADO
+        partido.goles_local = 1
+        partido.goles_visitante = 2
+        partido.scraper_seguimiento = {
+            'complete': True,
+            'estado': Partido.ESTADO_FINALIZADO,
+            'marcador': '1 - 2',
+            'scraper': {
+                'summary_available': True,
+                'statistics_available': True,
+                'lineups_available': True,
+                'commentary_available': True,
+                'report_available': True,
+                'summary': {
+                    'periods': [
+                        {'name': '1er Tiempo', 'score': {'home': '0', 'away': '1'}},
+                        {'name': '2º Tiempo', 'score': {'home': '1', 'away': '0'}},
+                        {'name': 'Prorroga', 'score': {'home': '0', 'away': '0'}},
+                        {'name': 'Penales', 'score': {'home': '3', 'away': '4'}},
+                    ]
+                },
+            },
+        }
+        partido.save(
+            update_fields=[
+                'equipo_local',
+                'equipo_visitante',
+                'estado',
+                'goles_local',
+                'goles_visitante',
+                'scraper_seguimiento',
+            ]
+        )
+
+        self.assertEqual(partido.marcador, '1 - 1')
+        self.assertEqual(partido.nota_penales, 'Paraguay gano 4-3 por penales')
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[]):
+            response = self.client.get('/almanaque/', {'q': 'Germany'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '1 - 1')
+        self.assertContains(response, 'Paraguay gano 4-3 por penales')
+
     def test_pagina_detalle_partido_muestra_informacion_ordenada(self):
         partido = Partido.objects.get(numero=1)
 
@@ -361,6 +440,44 @@ class MundialHomeTests(TestCase):
         self.assertEqual(partido.fecha_argentina.isoformat(), '2026-06-12')
         self.assertEqual(partido.horario_argentina, '22:00 ARG')
 
+    def test_seed_actualiza_horario_real_de_16avos_con_sede(self):
+        partido = Partido.objects.get(numero=75)
+
+        self.assertEqual(partido.fecha.isoformat(), '2026-06-29')
+        self.assertEqual(partido.horario, '21:00')
+        self.assertEqual(partido.estadio, 'Atlanta Stadium')
+        self.assertEqual(partido.ciudad, 'Atlanta')
+        self.assertEqual(partido.fecha_argentina.isoformat(), '2026-06-29')
+        self.assertEqual(partido.horario_argentina, '22:00 ARG')
+
+    def test_seed_actualiza_horarios_argentina_de_16avos(self):
+        esperados = {
+            73: ('2026-06-28', '16:00 ARG'),
+            74: ('2026-06-29', '17:30 ARG'),
+            76: ('2026-06-29', '14:00 ARG'),
+            77: ('2026-06-30', '18:00 ARG'),
+            78: ('2026-06-30', '14:00 ARG'),
+            85: ('2026-07-03', '00:00 ARG'),
+            87: ('2026-07-03', '22:30 ARG'),
+        }
+
+        for numero, (fecha, horario) in esperados.items():
+            partido = Partido.objects.get(numero=numero)
+            self.assertEqual(partido.fecha_argentina.isoformat(), fecha)
+            self.assertEqual(partido.horario_argentina, horario)
+
+    def test_almanaque_agrupa_por_fecha_argentina(self):
+        partido = Partido.objects.get(numero=36)
+
+        self.assertEqual(partido.fecha.isoformat(), '2026-06-20')
+        self.assertEqual(partido.fecha_argentina.isoformat(), '2026-06-21')
+
+        response = self.client.get('/almanaque/', {'q': 'Tunisia'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '21/06/2026')
+        self.assertNotContains(response, '20/06/2026')
+
     def test_home_renderiza_actualizador_de_partidos_en_vivo(self):
         response = self.client.get('/')
 
@@ -392,6 +509,59 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, '3 - 2')
         self.assertContains(response, 'match-card en_vivo')
         self.assertContains(response, 'En vivo')
+
+    def test_home_tarjetas_usan_marcador_del_scraper_en_16avos(self):
+        from unittest.mock import patch
+
+        partido = Partido.objects.select_related('equipo_local', 'equipo_visitante').get(numero=75)
+        scraped = {
+            'id': partido.id,
+            'partido': partido,
+            'match': {
+                'status': 'en_vivo',
+                'score': {'home': '1', 'away': '0'},
+            },
+        }
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[scraped]):
+            response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '1 - 0')
+        self.assertContains(response, 'match-card en_vivo')
+        self.assertContains(response, 'Netherlands')
+        self.assertContains(response, 'Morocco')
+
+    def test_home_marca_16avos_en_vivo_por_horario_si_no_hay_scraper(self):
+        from datetime import datetime, timezone as datetime_timezone
+        from unittest.mock import patch
+
+        now = datetime(2026, 6, 30, 1, 30, tzinfo=datetime_timezone.utc)
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[]):
+            with patch('core.views.timezone.now', return_value=now):
+                response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-partido-id="75"')
+        self.assertContains(response, 'match-card en_vivo')
+
+    def test_api_partidos_vivo_incluye_16avos_por_horario_si_no_hay_scraper(self):
+        from datetime import datetime, timezone as datetime_timezone
+        from unittest.mock import patch
+
+        partido = Partido.objects.get(numero=75)
+        now = datetime(2026, 6, 30, 1, 30, tzinfo=datetime_timezone.utc)
+
+        with patch('core.views.scraper_partidos_del_dia', return_value=[]):
+            with patch('core.views.timezone.now', return_value=now):
+                response = self.client.get('/api/partidos-vivo/')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        item = next(item for item in payload if item['id'] == partido.id)
+        self.assertEqual(item['estado'], Partido.ESTADO_EN_VIVO)
+        self.assertEqual(item['estado_display'], 'En vivo')
 
     def test_home_grupos_usan_resultado_guardado_del_snapshot(self):
         from unittest.mock import patch
@@ -1194,6 +1364,75 @@ class MundialHomeTests(TestCase):
         self.assertContains(response, 'Llaves')
         self.assertContains(response, 'bracket-board')
 
+    def test_cuartos_respetan_lados_oficiales_del_bracket(self):
+        self.assertEqual(
+            (
+                Partido.objects.get(numero=98).etiqueta_local,
+                Partido.objects.get(numero=98).etiqueta_visitante,
+            ),
+            ('Ganador 93', 'Ganador 94'),
+        )
+        self.assertEqual(
+            (
+                Partido.objects.get(numero=99).etiqueta_local,
+                Partido.objects.get(numero=99).etiqueta_visitante,
+            ),
+            ('Ganador 91', 'Ganador 92'),
+        )
+
+    def test_completar_fases_resuelve_slots_con_nombres_compuestos(self):
+        from core.management.commands.completar_fases_reales import equipo_desde_slot
+
+        cabo_verde = Equipo.objects.get(nombre='Cabo Verde')
+
+        self.assertEqual(equipo_desde_slot({'nombre': '2° Cabo Verde'}), cabo_verde)
+
+    def test_fase_final_real_no_avanza_ganador_hasta_resultado_final(self):
+        from core.views import completar_fase_final
+
+        argentina = Equipo.objects.get(nombre='Argentina')
+        cabo_verde = Equipo.objects.get(nombre='Cabo Verde')
+        partido_86 = Partido.objects.get(numero=86)
+        partido_95 = Partido.objects.get(numero=95)
+        partido_86.equipo_local = argentina
+        partido_86.equipo_visitante = cabo_verde
+        partido_86.estado = Partido.ESTADO_PROGRAMADO
+        partido_86.goles_local = None
+        partido_86.goles_visitante = None
+
+        fases = [
+            {'partidos': [partido_86]},
+            {'partidos': [partido_95]},
+        ]
+        completar_fase_final(fases, [], usar_predicciones=False)
+
+        self.assertEqual(partido_95.display_local_nombre, 'Ganador 86')
+
+        partido_86.estado = Partido.ESTADO_FINALIZADO
+        partido_86.goles_local = 2
+        partido_86.goles_visitante = 0
+
+        completar_fase_final(fases, [], usar_predicciones=False)
+
+        self.assertEqual(partido_95.display_local_nombre, 'Argentina')
+
+        partido_86.goles_local = 1
+        partido_86.goles_visitante = 1
+        partido_86.scraper_seguimiento = {
+            'scraper': {
+                'summary': {
+                    'periods': [
+                        {'name': '1er Tiempo', 'score': {'home': '1', 'away': '1'}},
+                        {'name': 'Penales', 'score': {'home': '2', 'away': '4'}},
+                    ]
+                }
+            }
+        }
+
+        completar_fase_final(fases, [], usar_predicciones=False)
+
+        self.assertEqual(partido_95.display_local_nombre, 'Cabo Verde')
+
     def test_fase_final_usa_clasificados_de_predicciones(self):
         usuario = User.objects.create_user(username='bracket', password='clave-segura-123')
         self.client.force_login(usuario)
@@ -1209,6 +1448,53 @@ class MundialHomeTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '1° Mexico')
+
+    def test_16avos_usan_cruce_oficial_m73_segundos_a_y_b(self):
+        usuario = User.objects.create_user(username='bracket-official', password='clave-segura-123')
+        self.client.force_login(usuario)
+        resultados = {
+            1: (3, 0),
+            2: (0, 1),
+            25: (0, 2),
+            28: (2, 0),
+            53: (0, 2),
+            54: (1, 0),
+            3: (1, 0),
+            8: (0, 2),
+            26: (2, 0),
+            27: (2, 0),
+            51: (3, 0),
+            52: (1, 0),
+        }
+        for numero, (local, visitante) in resultados.items():
+            Prediccion.objects.create(
+                usuario=usuario,
+                partido=Partido.objects.get(numero=numero),
+                goles_local=local,
+                goles_visitante=visitante,
+            )
+
+        response = self.client.get('/predicciones/', {'vista': 'final'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '2° South Africa')
+        self.assertContains(response, '2° Canada')
+
+    def test_anexo_c_fifa_asigna_terceros_por_grupo_no_por_ranking(self):
+        from core.knockout_rules import terceros_por_partido
+
+        slots = {grupo: {'grupo': grupo, 'nombre': f'3Â° Grupo {grupo}'} for grupo in 'ABCDEFJL'}
+
+        asignados = terceros_por_partido(slots)
+
+        self.assertEqual(asignados[74]['grupo'], 'D')
+        self.assertEqual(asignados[77]['grupo'], 'F')
+        self.assertEqual(asignados[79]['grupo'], 'C')
+        self.assertEqual(asignados[80]['grupo'], 'E')
+        self.assertEqual(asignados[81]['grupo'], 'B')
+        self.assertEqual(asignados[82]['grupo'], 'A')
+        self.assertEqual(asignados[85]['grupo'], 'J')
+        self.assertEqual(asignados[87]['grupo'], 'L')
 
     def test_pagina_predicciones_precarga_marcador_guardado(self):
         usuario = User.objects.create_user(username='predictor', password='clave-segura-123')
@@ -1655,6 +1941,66 @@ class MundialHomeTests(TestCase):
         self.assertEqual(len(report['matches']), 1)
         self.assertEqual(report['matches'][0]['home'], 'República Checa')
         self.assertEqual(report['matches'][0]['away'], 'Sudáfrica')
+
+    def test_scraper_extrae_links_de_playoffs_del_mundial(self):
+        from core.site_scraper import extract_flashscore_competition_matches
+
+        rows = [
+            {'ZA': 'MUNDIAL: Campeonato del Mundo - Playoffs', 'ZL': '/futbol/mundial/campeonato-del-mundo/'},
+            {
+                'AA': 'tx2IC6G7',
+                'AB': '1',
+                'AD': '1782838800',
+                'AE': 'Costa de Marfil',
+                'AF': 'Noruega',
+                'ER': '1/16 de final',
+                'WU': 'costa-de-marfil',
+                'WV': 'noruega',
+                'PX': 'G2FRjBgn',
+                'PY': '8rP6JO0H',
+            },
+        ]
+
+        matches = extract_flashscore_competition_matches(rows)
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]['competition'], 'MUNDIAL: Campeonato del Mundo - Playoffs')
+        self.assertEqual(matches[0]['round'], '1/16 de final')
+        self.assertEqual(matches[0]['home'], 'Costa de Marfil')
+        self.assertEqual(matches[0]['away'], 'Noruega')
+
+    def test_scraper_combina_resultados_y_proximos_de_la_pagina_del_mundial(self):
+        from unittest.mock import patch
+
+        from django.test import override_settings
+
+        from core.site_scraper import fetch_flashscore_worldcup_matches
+
+        html = '''
+            <script>
+                cjs.initialFeeds["summary-results"] = {
+                    data: `SAÃ·1Â¬~ZAÃ·MUNDIAL: Campeonato del Mundo - PlayoffsÂ¬~AAÃ·2y2UKhp1Â¬ADÃ·1782765000Â¬ABÃ·3Â¬AEÃ·AlemaniaÂ¬AFÃ·ParaguayÂ¬AGÃ·1Â¬AHÃ·2Â¬WUÃ·alemaniaÂ¬WVÃ·paraguayÂ¬PXÃ·ptQide1OÂ¬PYÃ·YaNlqp6jÂ¬~`,
+                    allEventsCount: 1,
+                    seasonId: 2026
+                };
+                cjs.initialFeeds["summary-fixtures"] = {
+                    data: `SAÃ·1Â¬~ZAÃ·MUNDIAL: Campeonato del Mundo - PlayoffsÂ¬~AAÃ·tx2IC6G7Â¬ADÃ·1782838800Â¬ABÃ·1Â¬AEÃ·Costa de MarfilÂ¬AFÃ·NoruegaÂ¬WUÃ·costa-de-marfilÂ¬WVÃ·noruegaÂ¬PXÃ·G2FRjBgnÂ¬PYÃ·8rP6JO0HÂ¬~`,
+                    allEventsCount: 1,
+                    seasonId: 2026
+                };
+            </script>
+        '''
+
+        with override_settings(SCRAPER_BASE_URL='https://www.flashscore.com.ar/futbol/mundial/campeonato-del-mundo/partidos/'):
+            with patch('core.site_scraper.fetch_html', return_value=(200, html)):
+                report = fetch_flashscore_worldcup_matches()
+
+        self.assertEqual(report['source'], 'page')
+        self.assertEqual(report['block'], 'summary-results+summary-fixtures')
+        self.assertEqual(len(report['matches']), 2)
+        self.assertEqual(report['matches'][0]['home'], 'Alemania')
+        self.assertEqual(report['matches'][0]['status'], 'finalizado')
+        self.assertEqual(report['matches'][1]['home'], 'Costa de Marfil')
 
     def test_scraper_empareja_partido_viejo_con_nombres_en_espanol(self):
         from core.site_scraper import flashscore_match_for_partido_in_matches
